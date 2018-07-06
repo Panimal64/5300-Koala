@@ -1,8 +1,21 @@
-sql5300: sql5300.o 
-	g++ -L/usr/local/berkeleydb/lib -L/usr/local/db6/lib -o $@ $< -ldb_cxx -lsqlparser
+#paths
+CCFLAGS     = -std=c++11 -std=c++0x -Wall -Wno-c++11-compat -DHAVE_CXX_STDHEADERS -D_GNU_SOURCE -D_REENTRANT -O3 -c
+COURSE      = /usr/local/db6
+INCLUDE_DIR = $(COURSE)/include
+LIB_DIR     = $(COURSE)/lib
 
-sql5300.o: sql5300.cpp   
-	g++ -I/usr/local/db6/include -std=c++11 -std=c++0x -Wall -Wno-c++11-compat -DHAVE_CXX_STDHEADERS -D_GNU_SOURCE -D_REENTRANT -O3 -c -o $@ $<
+# following is a list of all the compiled object files needed to build the sql5300 executable
+OBJS       = sql5300.o
 
+# General rule 
+%.o: %.cpp
+	g++ -I$(INCLUDE_DIR) $(CCFLAGS) -o "$@" "$<"
+
+# executable rule
+sql5300: $(OBJS)
+	g++ -L$(LIB_DIR) -o $@ $< -ldb_cxx -lsqlparser
+
+#clean file
 clean:
 	rm -f sql5300 *.o
+
