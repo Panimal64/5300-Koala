@@ -10,6 +10,9 @@ using namespace hsql;
 
 void initializeDBenv(char *DBenv);
 string execute(const SQLStatement *query);
+string selectTable(const SelectStatement *query);
+string expressionToString(const Expr *expr);
+string opToString(const Expr *expr);
 
 string tableRefInfoToString(const TableRef *table) {
     string tableString;
@@ -96,6 +99,119 @@ string tableRefInfoToString(const TableRef *table) {
 }
 
 
+string opToString(const Expr *expr){
+    if (expr == NULL){
+	return "null";
+    }
+
+    string ret;
+
+    if (expr->opType == Expr::NOT){
+	ret += "NOT ";
+    }
+    //LHS of the operator
+    ret += expressionToString(expr->expr) + " ";
+    
+    switch (expr->opType){
+	case Expr::SIMPLE_OP:
+	    ret += expr->opChar;
+	    break;
+	case Expr::AND:
+	    ret += "AND";
+	    break;
+	case Expr::OR:
+	    ret+= "OR";
+	    break;
+	default:
+	    break; //good style, handles if not is used
+    }
+    
+    //RHS of the operator in the case of anything but NOT
+    if(expr->expr2 != NULL){
+	ret += " " + expressionToString(expr->expr2);
+    }
+    return ret;
+}
+
+
+//translate AST expression into string
+string expressionToString(const Expr *expr){
+    string ret;
+    switch(expr->type){
+	case kExprStar:
+	    ret += "*";
+	    break;
+	case kExprColumnRef:
+	    if (expr->table != NULL){
+		ret += string(expr->table) + ".";
+	    }
+	    break;
+	case kExprLiteralString:
+	    ret += expr -> name;
+	    break;
+	case kExprLiteralFloat:
+	    ret += to_string(expr->fval);
+	    break;
+	case kExprLiteralInt:
+	    ret += to_string(expr->ival);
+	    break;
+	case kExprFunctionRef:
+	    ret += string(expr->name) + "?" + expr->expr->name;
+	    break;
+	case kExprOperator:
+	    ret += opToString(expr);
+	    break;
+	default:
+	    ret += "???"; //missing expr type
+	    break;
+    }
+    if (expr->alias != NULL){
+	ret += string(" AS ") + expr->alias;
+    }
+    return ret;
+}
+	
+
+
+//execute select function:
+string selectTable(const SelectStatement *stmt){
+    string ret("SELECT ");
+    /*
+    bool doComma = false;
+    for (Expr* expr : *stmt->selectList){
+	if(doComma){
+	    ret += ", ";
+	}
+	ret += expressionToString(expr);
+	doComma = true;
+    }
+    ret += " FROM " + tableRefInfoToString(stmt->fromTable);
+    if (stmt->whereClause != NULL){
+	ret += " WHERE " + expressionToString(stmt->whereClause);
+    }
+    */
+    return ret;
+}
+
+string columnDefinitionToString(const ColumnDefinition *col){
+    string ret(col->name);
+    switch (col->type){
+	case ColumnDefinition::DOUBLE:
+	    ret += " DOUBLE";
+	    break;
+	case ColumnDefinition::INT:
+	    ret += " INT";
+	    break;
+	case ColumnDefinition::TEXT:
+	    ret += " TEXT";
+	    break;
+	default:
+	ret += " ...";
+	break;
+    }
+    return ret;
+}
+
 //set db environement 
 void initializeDBenv(char *DBenv){
 
@@ -148,8 +264,8 @@ string createTable(const CreateStatement *stmt) {
 string execute(const SQLStatement *stmt) {
     //check the sql statment for type , TODO INSERTION 
     switch (stmt->type()) {
-    // case kStmtSelect:
-    //     return selectTable((const SelectStatement*) stmt);
+    case kStmtSelect:
+         return selectTable((const SelectStatement*) stmt);
     case kStmtCreate:
         return createTable((const CreateStatement*) stmt);
     default:
@@ -171,7 +287,6 @@ int main(int argc, char **argv) {
     //SQL Shell
     while(true){
         string SQLinput;
-        cout << endl;
         cout << "SQL>";
         getline(cin, SQLinput);
         //not inputs
@@ -193,7 +308,7 @@ int main(int argc, char **argv) {
         else{
             for (int i = 0 ; i< result->size(); i++){
                 //hsql::SQLStatement* statement = result->getStatement(i);
-                cout<< result->getStatement(i)<<endl;
+                cout << execute(result->getStatement(i)) << endl;
             }
 
         }
