@@ -13,19 +13,22 @@ string execute(const SQLStatement *query);
 string selectTable(const SelectStatement *query);
 string expressionToString(const Expr *expr);
 string opToString(const Expr *expr);
+string tableRefInfoToString(const TableRef *table);
 
 string tableRefInfoToString(const TableRef *table) {
     string tableString;
     bool hasAlias = false;
-    string aliasAS = ""
+    string aliasAS = "";
     if (table->alias != NULL){
         hasAlias = true;
-        aliasAS ="AS "
+        aliasAS ="AS ";
     }
     //for joins
+    string joinStr= "";
     string leftTable=""; //for left side
     string rightTable=""; //for right table
     string  joinCond =""; //join cond
+   
     switch (table->type) {
     
         case kTableName: 
@@ -44,7 +47,6 @@ string tableRefInfoToString(const TableRef *table) {
                  joinCond = "ON " + expressionToString(table->join->condition);
             }
            
-            string joinStr= "";
             switch (table->join->type) {
                 case kJoinCross:
                  {
@@ -176,7 +178,7 @@ string expressionToString(const Expr *expr){
 //execute select function:
 string selectTable(const SelectStatement *stmt){
     string ret("SELECT ");
-    /*
+   
     bool doComma = false;
     for (Expr* expr : *stmt->selectList){
 	if(doComma){
@@ -189,7 +191,7 @@ string selectTable(const SelectStatement *stmt){
     if (stmt->whereClause != NULL){
 	ret += " WHERE " + expressionToString(stmt->whereClause);
     }
-    */
+    
     return ret;
 }
 
