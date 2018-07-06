@@ -26,12 +26,12 @@ void initializeDBenv(char *DBenv){
         myEnv.open(DBenv, DB_CREATE | DB_INIT_MPOOL, 0);
     } catch(DbException &e) {
       cerr << "Error opening database environment: "
-                << envHome << std::endl;
+                << DBenv << std::endl;
                 cerr << e.what() << std::endl;
       exit( -1 );
   } catch(exception &e) {
     std::cerr << "Error opening database environment: "
-              << envHome << std::endl;
+              << DBenv << std::endl;
     std::cerr << e.what() << std::endl;
     }
 
