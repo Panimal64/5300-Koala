@@ -30,36 +30,36 @@ void initializeDBenv(char *DBenv){
 
 }
 
-// //Fr
-// string createTable(const CreateStatement *stmt) {
-//     string ret("CREATE TABLE ");
-//     if (stmt->type != CreateStatement::kTable )
-//         return ret + "...";
-//     if (stmt->ifNotExists)
-//         ret += "IF NOT EXISTS ";
-//     ret += string(stmt->tableName) + " (";
-//     bool doComma = false;
-//     for (ColumnDefinition *col : *stmt->columns) {
-//         if(doComma)
-//             ret += ", ";
-//         ret += columnDefinitionToString(col);
-//         doComma = true;
-//     }
-//     ret += ")";
-//     return ret;
-// }
 
-// string execute(const SQLStatement *stmt) {
-//     //check the sql statment for type , TODO INSERTION 
-//     switch (stmt->type()) {
-//     case kStmtSelect:
-//         return selectTable((const SelectStatement*) stmt);
-//     case kStmtCreate:
-//         return createTable((const CreateStatement*) stmt);
-//     default:
-//         return "No Implementation";
-//     }
-// } 
+string createTable(const CreateStatement *stmt) {
+    string ret("CREATE TABLE ");
+    if (stmt->type != CreateStatement::kTable )
+        return ret + "...";
+    if (stmt->ifNotExists)
+        ret += "IF NOT EXISTS ";
+    ret += string(stmt->tableName) + " (";
+    bool doComma = false;
+    for (ColumnDefinition *col : *stmt->columns) {
+        if(doComma)
+            ret += ", ";
+        ret += columnDefinitionToString(col);
+        doComma = true;
+    }
+    ret += ")";
+    return ret;
+}
+
+string execute(const SQLStatement *stmt) {
+    //check the sql statment for type , TODO INSERTION 
+    switch (stmt->type()) {
+    // case kStmtSelect:
+    //     return selectTable((const SelectStatement*) stmt);
+    case kStmtCreate:
+        return createTable((const CreateStatement*) stmt);
+    default:
+        return "No Implementation";
+    }
+} 
 
 
 int main(int argc, char **argv) {
