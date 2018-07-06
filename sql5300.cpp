@@ -25,48 +25,41 @@ void initializeDBenv(char *DBenv){
     try {
         myEnv.open(DBenv, DB_CREATE | DB_INIT_MPOOL, 0);
     } catch(DbException &e) {
-      cerr << "Error opening database environment: "
-                << DBenv << std::endl;
-                cerr << e.what() << std::endl;
-      exit( -1 );
-  } catch(exception &e) {
-    std::cerr << "Error opening database environment: "
-              << DBenv << std::endl;
-    std::cerr << e.what() << std::endl;
+        std::cerr << e.what() << std::endl;
     }
 
 }
 
-//Fr
-string createTable(const CreateStatement *stmt) {
-    string ret("CREATE TABLE ");
-    if (stmt->type != CreateStatement::kTable )
-        return ret + "...";
-    if (stmt->ifNotExists)
-        ret += "IF NOT EXISTS ";
-    ret += string(stmt->tableName) + " (";
-    bool doComma = false;
-    for (ColumnDefinition *col : *stmt->columns) {
-        if(doComma)
-            ret += ", ";
-        ret += columnDefinitionToString(col);
-        doComma = true;
-    }
-    ret += ")";
-    return ret;
-}
+// //Fr
+// string createTable(const CreateStatement *stmt) {
+//     string ret("CREATE TABLE ");
+//     if (stmt->type != CreateStatement::kTable )
+//         return ret + "...";
+//     if (stmt->ifNotExists)
+//         ret += "IF NOT EXISTS ";
+//     ret += string(stmt->tableName) + " (";
+//     bool doComma = false;
+//     for (ColumnDefinition *col : *stmt->columns) {
+//         if(doComma)
+//             ret += ", ";
+//         ret += columnDefinitionToString(col);
+//         doComma = true;
+//     }
+//     ret += ")";
+//     return ret;
+// }
 
-string execute(const SQLStatement *stmt) {
-    //check the sql statment for type , TODO INSERTION 
-    switch (stmt->type()) {
-    case kStmtSelect:
-        return selectTable((const SelectStatement*) stmt);
-    case kStmtCreate:
-        return createTable((const CreateStatement*) stmt);
-    default:
-        return "No Implementation";
-    }
-} 
+// string execute(const SQLStatement *stmt) {
+//     //check the sql statment for type , TODO INSERTION 
+//     switch (stmt->type()) {
+//     case kStmtSelect:
+//         return selectTable((const SelectStatement*) stmt);
+//     case kStmtCreate:
+//         return createTable((const CreateStatement*) stmt);
+//     default:
+//         return "No Implementation";
+//     }
+// } 
 
 
 int main(int argc, char **argv) {
