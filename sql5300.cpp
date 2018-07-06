@@ -11,6 +11,90 @@ using namespace hsql;
 void initializeDBenv(char *DBenv);
 string execute(const SQLStatement *query);
 
+string tableRefInfoToString(const TableRef *table) {
+    string tableString;
+    bool hasAlias = false;
+    string aliasAS = ""
+    if (table->alias != NULL){
+        hasAlias = true;
+        aliasAS ="AS "
+    }
+    //for joins
+    string leftTable=""; //for left side
+    string rightTable=""; //for right table
+    string  joinCond =""; //join cond
+    switch (table->type) {
+    
+        case kTableName: 
+        {
+            tableString += table->name;
+            tableString +=aliasAS;
+            break;
+        }
+            
+        case kTableJoin:
+            leftTable = tableRefInfoToString(table->join->left);
+            rightTable = tableRefInfoToString(table->join->right);
+            
+            if (table->join->condition != NULL)
+            {   
+                 joinCond = "ON " + expressionToString(table->join->condition);
+            }
+           
+            string joinStr= "";
+            switch (table->join->type) {
+                case kJoinCross:
+                 {
+                    joinStr= " CROSS JOIN ";
+                    break;
+                }
+                case kJoinInner:
+                {
+                    joinStr= " JOIN ";
+                    break;
+                }
+                  
+                case kJoinOuter:
+                 {
+                    joinStr= " OUTER JOIN ";
+                    break;
+                }
+                case kJoinLeftOuter:
+                 {
+                    joinStr= " LEFT OUTER JOIN ";
+                    break;
+                }
+                case kJoinLeft:
+                    joinStr= " LEFT JOIN ";
+                    break;
+                case kJoinRightOuter:
+                 {
+                    joinStr= " RIGHT OUTER JOIN ";
+                    break;
+                }
+                case kJoinRight:
+                    joinStr= " RIGHT JOIN ";
+                    break;
+                case kJoinNatural:
+                    joinStr= " NATURAL JOIN ";
+                    break;
+            }
+
+            tableString +=leftTable + joinStr + rightTable+ joinCond ;
+            break;
+        case kTableCrossProduct:
+            bool doComma = false;
+            for (TableRef* tbl : *table->list) {
+                if (doComma)
+                    tableString += ", ";
+                tableString += tableRefInfoToString(tbl);
+                doComma = true;
+            }
+            break;
+    }
+    return tableString;
+}
+
 
 //set db environement 
 void initializeDBenv(char *DBenv){
@@ -32,21 +116,33 @@ void initializeDBenv(char *DBenv){
 
 
 string createTable(const CreateStatement *stmt) {
-    string ret("CREATE TABLE ");
+
+    string sql_statement("CREATE TABLE ");
+
     if (stmt->type != CreateStatement::kTable )
-        return ret + "...";
+        return sql_statement= "Invalid create statement";
+
+    //if sql table does not exist,then append
     if (stmt->ifNotExists)
-        ret += "IF NOT EXISTS ";
-    ret += string(stmt->tableName) + " (";
+        sql_statement += "IF NOT EXISTS ";
+
+    if(stmt->tableName)
+    sql_statement += string(stmt->tableName);
+
+    //start of param
+    sql_statement += "(";
+
     bool doComma = false;
     for (ColumnDefinition *col : *stmt->columns) {
         if(doComma)
-            ret += ", ";
-        ret += columnDefinitionToString(col);
+            sql_statement += ", ";
+        sql_statement += columnDefinitionToString(col);
         doComma = true;
     }
-    ret += ")";
-    return ret;
+
+    //end of param
+    sql_statement += ")";
+    return sql_statement;
 }
 
 string execute(const SQLStatement *stmt) {
