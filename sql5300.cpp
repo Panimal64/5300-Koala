@@ -88,14 +88,17 @@ string tableRefInfoToString(const TableRef *table) {
             tableString +=leftTable + joinStr + rightTable+ joinCond ;
             break;
         case kTableCrossProduct:
-            bool doComma = false;
-            for (TableRef* tbl : *table->list) {
-                if (doComma)
-                    tableString += ", ";
-                tableString += tableRefInfoToString(tbl);
-                doComma = true;
+        {
+            for (int i = 0; table->list->size()-1;i++) {
+                tableString += tableRefInfoToString(table->list->at(i));
+                tableString += " , ";
+		if(table->list->at(++i) == table->list->back()){
+			tableString += tableRefInfoToString(table->list->at(i));
+		}
+                
             }
             break;
+        }   
     }
     return tableString;
 }
