@@ -27,24 +27,82 @@ RecordID SlottedPage::add(const Dbt* data) throw(DbBlockNoRoomError) {
     return id;
 }
 
+//given the id of a record we try to get the header of the any record with that id
+//if it doesn't exist we reutrn null, if it does we pull the data from the
+//block and return it in a block pointer
 Dbt* SlottedPage::get(RecordID record_id){
-
+    u16 size, loc;
+    get_header(size, loc, record_id);
+    if (loc == NULL){
+	return NULL;
+    }
+    Dbt* result = new Dbt(this->address(loc), size);
+    return result;
 }
+
+//this updates an existing record by getting the old record's information, and comparing
+//its size to the new size of the incoming data.  If the new block is bigger we check
+//if there is room, slide the block left (to make room) and copy the data into it.  
+//Else we copy the data into the block and slide the block right (to fill the gap).
+//Then we update the headers as appropriate.
 void SlottedPage::put(RecordID record_id, const Dbt &data) throw(DbBlockNoRoomError){
-
+    u16 size, loc;
+    get_header(size, loc, record_id);
+    u16 new_size = data->get_size();
+    if (new_size > size){
+	u16 extra = new_size - size;
+	if(has_room(extra){
+	    slide(loc + new_size, loc + size);//sliding left to add room
+	    memcpy(this->address(loc-extra), data->get_data(), new_size);
+	}
+	else{
+	    throw DbBlockNoRoomError("Block is full!");
+	}
+    }
+    else{
+	memcpy(this->address(loc), data->get_data(), new_size);
+	slide(loc + new_size, loc + size);//sliding right to leave room behind
+    }
+    get_header(size, loc, record_id);
+    put_header(record_id, size, loc);
 }
+
+//Deletes a block by setting its size and location to 0, we call slide to 
+//fix the end_free value and collapse the data that was there.
 void SlottedPage::del(RecordID record_id){
+    u16 size, loc;
+    get_header(size, loc, record_id);
+    put_header(record_id, 0, 0);
+    slide(loc, loc + size);
 
 }
+
+//RecordIDs is a vector that is typedef'd in storage_engine.h. So to return
+//a pointer of it we will create a new pointer to a a vector, go through the
+//number of records we have saved in the object variable.  And we push back
+//the number of any that exist into the vector.  Then simply return that vector
+//----Maybe make sure we release this memory?---
 RecordIDs* ids(void){
-
+    RecordIDs record_ids = new RecordIDs();
+    for (int i = 1; i < this->num_records; i++){
+	u16 size, loc;
+	get_header(size, loc, i);
+	if (loc != 0){
+	    record_ids->pushback(i); //make sure this is right
+	}
+    }
+    return record_ids;
 }
 
+//get the header information for a given id.
 void SlottedPage::get_header(u_int16_t &size, u_int16_t &loc, RecordID id=0){
-
+    loc = get_n(id*4);
+    size = get_n(id*4 + 2);
 }
+
+
 //from klundeen
-void SlottedPage::put_header(RecordID id, u16 size, u16 loc) {
+void SlottedPage::put_header(RecordID id = 0, u16 size = 0, u16 loc = 0) {
     if (id == 0) { // called the put_header() version and using the default params
         size = this->num_records;
         loc = this->end_free;
@@ -53,12 +111,39 @@ void SlottedPage::put_header(RecordID id, u16 size, u16 loc) {
     put_n(4*id + 2, loc);
 }
 
+//returns a bool stating if the size given is small enough to fit in the remaining space
+//this is done by subtracting from the end_free location in the block (last free byte),
+//the number of bytes taken up by the header (including the new entry)
 bool SlottedPage::has_room(u_int16_t size){
-
+    u16 free = this->end_free - ((this->num_records + 1) * 4);
+    return size <= free;
 }
+
+//Slides the data in a block left or right as neccessary to allow for more room in the
+//page (or to take up more room). Accomplished by finding the shift and copying the
+//information contained in the block that needs moving into the new location. Headers
+//are then adjusted to account for the change.
 void SlottedPage::slide(u_int16_t start, u_int16_t end){
+    u16 shift = end - start;
+    if (shift == 0){
+	return;
+    }
+    memcpy(this->address(end_free + 1), this->address(end_free + 1 + shift), shift);
 
+    //adjust newheaders
+    u16 size, loc;
+    for (int record_id : ids()){ //will the memory here be released? be wary of this statement
+	get_header(size, loc, record_id);
+	if (loc <= start){
+	    loc += shift;
+	    put_header(record_id, size, loc);
+	}
+    }
+    this->end_free += shift;
+    put_header();
 }
+
+
 //from klundeen
 // Get 2-byte integer at given offset in block.
 u16 SlottedPage::get_n(u16 offset) {
