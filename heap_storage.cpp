@@ -170,15 +170,32 @@ void* SlottedPage::address(u16 offset) {
         Uses SlottedPage for storing records within blocks.
  */
 HeapFile::HeapFile(std::string name) : DbFile(name), dbfilename(""), last(0), closed(true), db(_DB_ENV, 0) {
-
+	this->dbfilename = this->name + ".db";
 }
 
+//create file
 void HeapFile::create(void){
+	db_open(DB_CREATE|DB_EXCL);
+	get_new();
+}
+//delete file
+void HeapFile::drop(void){
+	close();
+	db.remove(this->dbfilename.c_str(), nullptr,0); //filename, flags
+}
+//open file
+void HeapFile::open(void){
+	if(this->closed == false){
+		db_open();
+	}
+	
+}
+//closefile
+void HeapFile::close(void){
+	this->db.close();
+	this->closed = true;
 
 }
-void HeapFile::drop(void){}
-void HeapFile::open(void){}
-void HeapFile::close(void){}
 // written by klundeen
 SlottedPage* HeapFile::get_new(void) {
     char block[DB_BLOCK_SZ]{}
@@ -196,19 +213,41 @@ SlottedPage* HeapFile::get_new(void) {
 }
 
 SlottedPage* HeapFile::get(BlockID block_id){
-
+	
+    Dbt data;
+    Dbt key(&block_id, sizeof(block_id));
+    this->db.get(nullptr, &key, &data, 0);
+    return SlottedPage(data, block_id, false);
 }
+//write block into file
 void HeapFile::put(DbBlock* block){
+	BlockID block_id = block->get_block_id();
+	Dbt key(&block_id, sizeof(block_id));
+	this->db.put(nullptr,&key, block->get_block(),0);
 	
 }
+//returns the id  of block for updates
+//push a block id number to BLOCK ID
 BlockIDs* HeapFile::block_ids(){
-	
+	BlockIDs* ids = new BlockIDs(); 
+	for(int block = 1; block <= this->last; i++){
+		ids->push_back(block); 
+	}
+	return ids;
 }
-
-u_int32_t HeapFile::get_last_block_id() {return last;}
+//return last id
+u_int32_t HeapFile::get_last_block_id() {
+	return last;
+}
+//open db 
 
 void HeapFile::db_open(uint flags=0){
-
+	if(this->closed == true){
+		return;
+	}
+	this.db.open(nullptr, this->filename.c_str(), nullptr, DB_RECNO,flags,0);
+	this->last=db.get(DB_LAST); //get last key/data pair of db Check if works
+	this->closed = false;
 }
 /**
  * @class HeapTable - Heap storage engine (implementation of DbRelation)
@@ -219,17 +258,30 @@ HeapTable::HeapTable(Identifier table_name, ColumnNames column_names, ColumnAttr
 
 }
 
-void HeapTable::create(){}
-void HeapTable::create_if_not_exists(){}
-void HeapTable::drop(){}
-void HeapTable::open(){}
-void HeapTable::close(){}
+void HeapTable::create(){
+	this->file.create();
+}
+void HeapTable::create_if_not_exists(){
+	try{
+		this->open();
+	}
+	catch (DBExceptions& e){
+		this->create();
+	}
+}
+void HeapTable::drop(){
+	file.drop();
+}
+void HeapTable::open(){
+	file.open();
+}
+void HeapTable::close(){
+	file.close();
+}
 
 Handle HeapTable::insert(const ValueDict* row){}
 void HeapTable::update(const Handle handle, const ValueDict* new_values){}
 void HeapTable::del(const Handle handle){}
-
-Handles* HeapTable::select(){}
 
 //from klundeen
 Handles* HeapTable::select(const ValueDict* where) {
@@ -290,6 +342,42 @@ ValueDict* HeapTable::unmarshal(Dbt* data){
 }
 
 
-bool HeapTable::test_heap_storage(){
+bool test_heap_storage() {
+	ColumnNames column_names;
+	column_names.push_back("a");
+	column_names.push_back("b");
+	ColumnAttributes column_attributes;
+	ColumnAttribute ca(ColumnAttribute::INT);
+	column_attributes.push_back(ca);
+	ca.set_data_type(ColumnAttribute::TEXT);
+	column_attributes.push_back(ca);
+    HeapTable table1("_test_create_drop_cpp", column_names, column_attributes);
+    table1.create();
+    std::cout << "create ok" << std::endl;
+    table1.drop();  // drop makes the object unusable because of BerkeleyDB restriction -- maybe want to fix this some day
+    std::cout << "drop ok" << std::endl;
 
+    HeapTable table("_test_data_cpp", column_names, column_attributes);
+    table.create_if_not_exists();
+    std::cout << "create_if_not_exsts ok" << std::endl;
+
+    ValueDict row;
+    row["a"] = Value(12);
+    row["b"] = Value("Hello!");
+    std::cout << "try insert" << std::endl;
+    table.insert(&row);
+    std::cout << "insert ok" << std::endl;
+    Handles* handles = table.select();
+    std::cout << "select ok " << handles->size() << std::endl;
+    ValueDict *result = table.project((*handles)[0]);
+    std::cout << "project ok" << std::endl;
+    Value value = (*result)["a"];
+    if (value.n != 12)
+    	return false;
+    value = (*result)["b"];
+    if (value.s != "Hello!")
+		return false;
+    table.drop();
+
+    return true;
 }
