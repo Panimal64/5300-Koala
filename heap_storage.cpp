@@ -1,4 +1,7 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include "heap_storage.h";
+using namespace std;
 
 typedef u_int16_t u16;
 
