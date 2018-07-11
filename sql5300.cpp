@@ -89,14 +89,24 @@ string tableRefInfoToString(const TableRef *table) {
             break;
         case kTableCrossProduct:
         {
-            for (int i = 0; table->list->size()-1;i++) {
-                tableString += tableRefInfoToString(table->list->at(i));
-                tableString += " , ";
-		if(table->list->at(++i) == table->list->back()){
-			tableString += tableRefInfoToString(table->list->at(i));
-		}
+		//not working
+//             for (int i = 0; table->list->size()-1;i++) {
+//                 tableString += tableRefInfoToString(table->list->at(i));
+//                 tableString += " , ";
+// 		if(table->list->at(++i) == table->list->back()){
+// 			tableString += tableRefInfoToString(table->list->at(i));
+// 		}
                 
-            }
+//             }
+	//working
+	bool doComma = false;
+	for (TableRef* tbl : *table->list) {
+		if (doComma)
+			tableString  += ", ";
+		tableString += tableRefInfoToString(tbl);
+		doComma = true;
+	}
+
             break;
         }   
     }
