@@ -341,7 +341,35 @@ Dbt* HeapTable::marshal(const ValueDict* row) {
 
 
 ValueDict* HeapTable::unmarshal(Dbt* data){
-	
+	ValueDict *row = new ValueDict();
+	uint offset = 0;
+    uint col_num = 0;
+    char *bytes = (char*)data->get_data();
+    Value value;
+
+    for (auto const& column_name: this->column_names) {
+        ColumnAttribute ca = this->column_attributes[col_num++];
+        value.data_type = ca.get_data_type();
+        
+        if (ca.get_data_type() == ColumnAttribute::DataType::INT) {
+            value.n= *(int32_t*) (bytes + offset); 
+            offset += sizeof(int32_t);
+            *row[column_name] = value;
+        }
+     	else if (ca.get_data_type() == ColumnAttribute::DataType::TEXT) {
+            uint totalBytes = *(u16*) (bytes + offset);
+            offset += sizeof(u16);
+        	char* stringBuffer = new char[totalBytes];
+            memcpy(stringBuffer,bytes+offset, totalBytes); // copy source into destination buffer of size
+            value.s = string(stringBuffer);
+            offset += size;
+            *row[column_name] = value;
+    	} 
+    	else {
+	            throw DbRelationError("Only know how to marshal INT and TEXT");
+    	}
+
+	return row;
 }
 
 
