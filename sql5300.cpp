@@ -21,7 +21,8 @@ string tableRefInfoToString(const TableRef *table) {
     string aliasAS = "";
     if (table->alias != NULL){
         hasAlias = true;
-        aliasAS ="AS ";
+        aliasAS =" AS ";
+	aliasAS += table->alias;
     }
     //for joins
     string joinStr= "";
@@ -44,7 +45,7 @@ string tableRefInfoToString(const TableRef *table) {
             
             if (table->join->condition != NULL)
             {   
-                 joinCond = "ON " + expressionToString(table->join->condition);
+                 joinCond = " ON " + expressionToString(table->join->condition);
             }
            
             switch (table->join->type) {
@@ -150,7 +151,6 @@ string expressionToString(const Expr *expr){
 	    if (expr->table != NULL){
 		ret += string(expr->table) + ".";
 	    }
-	    break;
 	case kExprLiteralString:
 	    ret += expr -> name;
 	    break;
