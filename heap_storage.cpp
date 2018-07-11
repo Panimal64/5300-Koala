@@ -284,9 +284,18 @@ void HeapTable::close(){
 
 Handle HeapTable::insert(const ValueDict* row){}
 void HeapTable::update(const Handle handle, const ValueDict* new_values){}
-void HeapTable::del(const Handle handle){}
+	   
+//DELETE from a specified table with specific handle
+void HeapTable::del(const Handle handle){
+	BlockID block = handle.first;
+	RecordID record = handle.second;
+	SlottedPage* page = file.get(block_id);
+	page->del(record);
+
+}
 
 //from klundeen
+//Used for SELECTNG a handle with specific rows
 Handles* HeapTable::select(const ValueDict* where) {
     Handles* handles = new Handles();
     BlockIDs* block_ids = file.block_ids();
@@ -302,7 +311,15 @@ Handles* HeapTable::select(const ValueDict* where) {
     return handles;
 }
 
-ValueDict* HeapTable::project(Handle handle){}
+ValueDict* HeapTable::project(Handle handle){
+	BlockID block = handle.first;
+	RecordID record = handle.second;
+	SlottedPage* block = file.get(block_id);
+	Dbt* data= block->get(record);
+	ValueDict* value = unmarshal(dbt);
+	return value;
+}
+	   
 ValueDict* HeapTable::project(Handle handle, const ColumnNames* column_names){}
 
 ValueDict* HeapTable::validate(const ValueDict* row){}
