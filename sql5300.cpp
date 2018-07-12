@@ -90,13 +90,16 @@ string tableRefInfoToString(const TableRef *table) {
             break;
         case kTableCrossProduct:
         {
-            for (int i = 0; table->list->size()-1;i++) {
-                tableString += tableRefInfoToString(table->list->at(i));
-                tableString += " , ";
-		if(table->list->at(++i) == table->list->back()){
-			tableString += tableRefInfoToString(table->list->at(i));
+	    bool needComma = false;
+            for (int i = 0; i < table->list->size(); i++) {
+                if (needComma){
+		    tableString += ", ";
 		}
-                
+		tableString += tableRefInfoToString(table->list->at(i));
+		/*if(table->list->at(++i) == table->list->back()){
+			tableString += tableRefInfoToString(table->list->at(i));
+		}*/
+                needComma = true;
             }
             break;
         }   
