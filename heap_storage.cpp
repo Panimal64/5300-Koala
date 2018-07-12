@@ -311,19 +311,65 @@ Handles* HeapTable::select(const ValueDict* where) {
     return handles;
 }
 
+//I'm not sure if this will get every single column, is that okay?
 ValueDict* HeapTable::project(Handle handle){
 	BlockID block = handle.first;
 	RecordID record = handle.second;
 	SlottedPage* block = file.get(block_id);
 	Dbt* data= block->get(record);
-	ValueDict* value = unmarshal(dbt);
+	ValueDict* value = this->unmarshal(data);
 	return value;
 }
 	   
-ValueDict* HeapTable::project(Handle handle, const ColumnNames* column_names){}
+ValueDict* HeapTable::project(Handle handle, const ColumnNames* column_names){
+    BlockID block = handle.first;
+    RecordID record = handle.second;
+    SlottedPage* block = file.get(block_id);
+    Dbt* data = block->get(record);
+    ValueDict* value = unmarshal(data);
+    ValueDict* result;
+    if (column_names == NULL){
+	return value;
+    }
+    else{
+	result = new ValueDict();
+	for (auto const &column : column_names){
+	    ValueDict::const_iterator field = value->find(column);
+	    result->insert(pair<Identifier,Value>(field->first, field->second));
+	}
+    }
+    return result;
 
-ValueDict* HeapTable::validate(const ValueDict* row){}
-Handle HeapTable::append(const ValueDict* row){}
+}
+
+ValueDict* HeapTable::validate(const ValueDict* row){
+    ValueDict* wholeRow = new ValueDict;
+    for (auto const& column : this->column_names){
+	ValueDict::const_iterator field = row->find(column_names){
+	    if (field == row->end()){
+		trow DbRelationError("Failed Validation");
+	    }
+	    else{
+		wholeRow->insert(pair<Identifier, Value>(field->first, field->second);
+	    }
+	}
+    }
+    return wholeRow;
+}
+Handle HeapTable::append(const ValueDict* row){
+    Dbt* data = this->marshal(row);
+    SlottedPage* block = this->file->get(this->file->get_last_block_id());
+    RecordID record;
+    try{
+	record = block->add(data);
+    }
+    catch (DbBlockNoRoomError){
+	block = this->file->get_new();
+	record = block->add(data);
+    }
+    this->file->put(block);
+    return Handle(this->file->get_last_block_id(), record);
+}
 
 //from klundeen
 // return the bits to go into the file
