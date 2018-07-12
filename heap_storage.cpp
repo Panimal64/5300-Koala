@@ -238,18 +238,18 @@ BlockIDs* HeapFile::block_ids(){
 	}
 	return ids;
 }
-//return last bloc id
-u_int32_t HeapFile::get_last_block_id() {
-	return this->last;
-}
+//return last bloc id, not sure if needed
+// u_int32_t HeapFile::get_last_block_id() {
+// 	return this->last;
+// }
 //open db 
 
-void HeapFile::db_open(uint flags=0){
+void HeapFile::db_open(uint flags){
 	if(this->closed == true){
 		return;
 	}
 	this->db.open(nullptr, this->dbfilename.c_str(), nullptr, DB_RECNO,flags,0);
-	this->last=db.get(DB_LAST); //get last key/data pair of db Check if works
+	//this->last=db.get(DB_LAST); //get last key/data pair of db Check if works
 	this->closed = false;
 }
 /**
@@ -268,7 +268,7 @@ void HeapTable::create_if_not_exists(){
 	try{
 		this->open();
 	}
-	catch (DBException& e){
+	catch (DbException& e){
 		this->create();
 	}
 }
@@ -281,11 +281,31 @@ void HeapTable::open(){
 void HeapTable::close(){
 	file.close();
 }
-
+//insert row into db page -> block
 Handle HeapTable::insert(const ValueDict* row){
-
+	validate(row);
+	if(this->file.get_last_block_id() == 0){
+		this->file.get_new();
+	}
+	Dbt* data = marshal(row);
+	SlottedPage* page = this.get(get_last_block_id);
+	RecordID record =page->add(data);
+	this->file.put(page);
+	Handle handle;
+	handle->push_back(Handle(page->get_block_id(), record));
+	return handle;
 }
+//Updates data on a page
 void HeapTable::update(const Handle handle, const ValueDict* new_values){
+	validate(new_values);
+
+	Dbt* data = marshal(new_values);
+	BlockID block = handle.first;
+	RecordID record = handle.second;
+
+	SlottedPage* page= get_block(block);
+	page->put(record, *data);
+	this->file.put(page);
 
 }
 	   
@@ -333,7 +353,7 @@ ValueDict* HeapTable::project(Handle handle, const ColumnNames* column_names){
     ValueDict* value = unmarshal(data);
     ValueDict* result;
     if (column_names == NULL){
-	return value;
+		return value;
     }
     else{
 		result = new ValueDict();
@@ -342,6 +362,8 @@ ValueDict* HeapTable::project(Handle handle, const ColumnNames* column_names){
 		    result->insert(pair<Identifier,Value>(field->first, field->second));
 		}
     }
+    delete page;
+    delete data;
     return result;
 
 }
@@ -360,12 +382,12 @@ ValueDict* HeapTable::project(Handle handle, const ColumnNames* column_names){
 ValueDict* HeapTable::validate(const ValueDict* row){
     ValueDict* wholeRow = new ValueDict;
     for (auto const& column : this->column_names){
-		ValueDict::const_iterator field = row->find(column_names);
+		ValueDict::const_iterator field = row->find(column);
 	    if (field == row->end()){
 			throw DbRelationError("Failed Validation");
 	    }
 	    else{
-			wholeRow->insert(pair<Identifier, Value>(field->first, field->second);
+			wholeRow->insert(pair<Identifier, Value>(field->first, field->second));
 	    }
 	    
   	}
@@ -374,17 +396,17 @@ ValueDict* HeapTable::validate(const ValueDict* row){
 
 Handle HeapTable::append(const ValueDict* row){
     Dbt* data = this->marshal(row);
-    SlottedPage* block = this->file->get(this->file->get_last_block_id());
+    SlottedPage* block = this->file.get(this->file->get_last_block_id());
     RecordID record;
     try{
 	record = block->add(data);
     }
     catch (DbBlockNoRoomError){
-	block = this->file->get_new();
+	block = this->file.get_new();
 	record = block->add(data);
     }
-    this->file->put(block);
-    return Handle(this->file->get_last_block_id(), record);
+    this->file.put(block);
+    return Handle(this->file.get_last_block_id(), record);
 }
 
 //from klundeen
@@ -433,7 +455,7 @@ ValueDict* HeapTable::unmarshal(Dbt* data){
         if (ca.get_data_type() == ColumnAttribute::DataType::INT) {
             value.n= *(int32_t*) (bytes + offset); 
             offset += sizeof(int32_t);
-            *row[column_name] = value;
+            (*row)[column_name] = value;
         }
      	else if (ca.get_data_type() == ColumnAttribute::DataType::TEXT) {
             uint totalBytes = *(u16*) (bytes + offset);
@@ -441,8 +463,8 @@ ValueDict* HeapTable::unmarshal(Dbt* data){
         	char* stringBuffer = new char[totalBytes];
             memcpy(stringBuffer,bytes+offset, totalBytes); // copy source into destination buffer of size
             value.s = string(stringBuffer);
-            offset += size;
-            *row[column_name] = value;
+            offset += totalBytes;
+            (*row)[column_name] = value;
     	} 
     	else {
 	            throw DbRelationError("Only know how to marshal INT and TEXT");
