@@ -282,8 +282,12 @@ void HeapTable::close(){
 	file.close();
 }
 
-Handle HeapTable::insert(const ValueDict* row){}
-void HeapTable::update(const Handle handle, const ValueDict* new_values){}
+Handle HeapTable::insert(const ValueDict* row){
+
+}
+void HeapTable::update(const Handle handle, const ValueDict* new_values){
+
+}
 	   
 //DELETE from a specified table with specific handle
 void HeapTable::del(const Handle handle){
@@ -322,6 +326,7 @@ ValueDict* HeapTable::project(Handle handle){
 }
 	   
 ValueDict* HeapTable::project(Handle handle, const ColumnNames* column_names){
+<<<<<<< HEAD
     BlockID block = handle.first;
     RecordID record = handle.second;
     SlottedPage* block = file.get(block_id);
@@ -370,6 +375,27 @@ Handle HeapTable::append(const ValueDict* row){
     this->file->put(block);
     return Handle(this->file->get_last_block_id(), record);
 }
+=======
+	BlockID block = handle.first;
+	RecordID record = handle.second;
+	SlottedPage* block = file.get(block_id);
+	Dbt* data= block->get(record);
+	ValueDict* value = unmarshal(dbt);
+	ValueDict* ret;
+	for (auto const& column_name: *column_names) {
+		*ret[column_name]= *value[column_name];
+	}
+	return ret;
+}
+
+ValueDict* HeapTable::validate(const ValueDict* row){
+
+}
+	   
+Handle HeapTable::append(const ValueDict* row){
+
+}
+>>>>>>> ef9ad8822ae1451712de71fb2956ff083267380b
 
 //from klundeen
 // return the bits to go into the file
