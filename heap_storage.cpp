@@ -54,13 +54,13 @@ void SlottedPage::put(RecordID record_id, const Dbt &data) throw(DbBlockNoRoomEr
     u16 new_size = data->get_size();
     if (new_size > size){
 	u16 extra = new_size - size;
-	if(has_room(extra){
-	    slide(loc + new_size, loc + size);//sliding left to add room
-	    memcpy(this->address(loc-extra), data->get_data(), new_size);
-	}
-	else{
-	    throw DbBlockNoRoomError("Block is full!");
-	}
+		if(has_room(extra)){
+		    slide(loc + new_size, loc + size);//sliding left to add room
+		    memcpy(this->address(loc-extra), data->get_data(), new_size);
+		}
+		else{
+		    throw DbBlockNoRoomError("Block is full!");
+		}
     }
     else{
 	memcpy(this->address(loc), data->get_data(), new_size);
@@ -86,13 +86,13 @@ void SlottedPage::del(RecordID record_id){
 //the number of any that exist into the vector.  Then simply return that vector
 //----Maybe make sure we release this memory?---
 RecordIDs* ids(void){
-    RecordIDs record_ids = new RecordIDs();
+    RecordIDs* record_ids = new RecordIDs();
     for (int i = 1; i < this->num_records; i++){
-	u16 size, loc;
-	get_header(size, loc, i);
-	if (loc != 0){
-	    record_ids->pushback(i); //make sure this is right
-	}
+		u16 size, loc;
+		get_header(size, loc, i);
+		if (loc != 0){
+		    record_ids->pushback(i); //make sure this is right
+		}
     }
     return record_ids;
 }
@@ -195,7 +195,7 @@ void HeapFile::open(void){
 }
 //closefile
 void HeapFile::close(void){
-	this->db.close();
+	this->db.close(0); //pass in flags, check later
 	this->closed = true;
 
 }
@@ -233,14 +233,14 @@ void HeapFile::put(DbBlock* block){
 //push a block id number to BLOCK ID
 BlockIDs* HeapFile::block_ids(){
 	BlockIDs* ids = new BlockIDs(); 
-	for(int block = 1; block <= this->last; i++){
+	for(int block = 1; block <= this->last; block++){
 		ids->push_back(block); 
 	}
 	return ids;
 }
-//return last id
+//return last bloc id
 u_int32_t HeapFile::get_last_block_id() {
-	return last;
+	return this->last;
 }
 //open db 
 
@@ -248,7 +248,7 @@ void HeapFile::db_open(uint flags=0){
 	if(this->closed == true){
 		return;
 	}
-	this.db.open(nullptr, this->filename.c_str(), nullptr, DB_RECNO,flags,0);
+	this->db.open(nullptr, this->dbfilename.c_str(), nullptr, DB_RECNO,flags,0);
 	this->last=db.get(DB_LAST); //get last key/data pair of db Check if works
 	this->closed = false;
 }
@@ -257,9 +257,9 @@ void HeapFile::db_open(uint flags=0){
  */
 
 
-HeapTable::HeapTable(Identifier table_name, ColumnNames column_names, ColumnAttributes column_attributes ){
+// HeapTable::HeapTable(Identifier table_name, ColumnNames column_names, ColumnAttributes column_attributes ){
 
-}
+// }
 
 void HeapTable::create(){
 	this->file.create();
@@ -268,7 +268,7 @@ void HeapTable::create_if_not_exists(){
 	try{
 		this->open();
 	}
-	catch (DBExceptions& e){
+	catch (DBException& e){
 		this->create();
 	}
 }
@@ -319,8 +319,8 @@ Handles* HeapTable::select(const ValueDict* where) {
 ValueDict* HeapTable::project(Handle handle){
 	BlockID block = handle.first;
 	RecordID record = handle.second;
-	SlottedPage* block = file.get(block);
-	Dbt* data= block->get(record);
+	SlottedPage* page = file.get(block);
+	Dbt* data= page->get(record);
 	ValueDict* value = this->unmarshal(data);
 	return value;
 }
@@ -329,18 +329,18 @@ ValueDict* HeapTable::project(Handle handle, const ColumnNames* column_names){
     BlockID block = handle.first;
     RecordID record = handle.second;
     SlottedPage* page = file.get(block);
-    Dbt* data = block->get(record);
+    Dbt* data = page->get(record);
     ValueDict* value = unmarshal(data);
     ValueDict* result;
     if (column_names == NULL){
 	return value;
     }
     else{
-	result = new ValueDict();
-	for (auto const &column : *column_names){
-	    ValueDict::const_iterator field = value->find(column);
-	    result->insert(pair<Identifier,Value>(field->first, field->second));
-	}
+		result = new ValueDict();
+		for (auto const &column : *column_names){
+		    ValueDict::const_iterator field = value->find(column);
+		    result->insert(pair<Identifier,Value>(field->first, field->second));
+		}
     }
     return result;
 
@@ -357,21 +357,21 @@ ValueDict* HeapTable::project(Handle handle, const ColumnNames* column_names){
 // 	}
 // 	return ret;
 // }
-	   
 ValueDict* HeapTable::validate(const ValueDict* row){
     ValueDict* wholeRow = new ValueDict;
     for (auto const& column : this->column_names){
-	ValueDict::const_iterator field = row->find(column_names){
+		ValueDict::const_iterator field = row->find(column_names);
 	    if (field == row->end()){
-		trow DbRelationError("Failed Validation");
+			throw DbRelationError("Failed Validation");
 	    }
 	    else{
-		wholeRow->insert(pair<Identifier, Value>(field->first, field->second);
+			wholeRow->insert(pair<Identifier, Value>(field->first, field->second);
 	    }
-	}
-    }
+	    
+  	}
     return wholeRow;
-}
+}	   
+
 Handle HeapTable::append(const ValueDict* row){
     Dbt* data = this->marshal(row);
     SlottedPage* block = this->file->get(this->file->get_last_block_id());
