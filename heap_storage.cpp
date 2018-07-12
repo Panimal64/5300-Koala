@@ -293,7 +293,7 @@ void HeapTable::update(const Handle handle, const ValueDict* new_values){
 void HeapTable::del(const Handle handle){
 	BlockID block = handle.first;
 	RecordID record = handle.second;
-	SlottedPage* page = file.get(block_id);
+	SlottedPage* page = file.get(block);
 	page->del(record);
 
 }
@@ -319,7 +319,7 @@ Handles* HeapTable::select(const ValueDict* where) {
 ValueDict* HeapTable::project(Handle handle){
 	BlockID block = handle.first;
 	RecordID record = handle.second;
-	SlottedPage* block = file.get(block_id);
+	SlottedPage* block = file.get(block);
 	Dbt* data= block->get(record);
 	ValueDict* value = this->unmarshal(data);
 	return value;
@@ -328,7 +328,7 @@ ValueDict* HeapTable::project(Handle handle){
 ValueDict* HeapTable::project(Handle handle, const ColumnNames* column_names){
     BlockID block = handle.first;
     RecordID record = handle.second;
-    SlottedPage* block = file.get(block_id);
+    SlottedPage* page = file.get(block);
     Dbt* data = block->get(record);
     ValueDict* value = unmarshal(data);
     ValueDict* result;
@@ -337,7 +337,7 @@ ValueDict* HeapTable::project(Handle handle, const ColumnNames* column_names){
     }
     else{
 	result = new ValueDict();
-	for (auto const &column : column_names){
+	for (auto const &column : *column_names){
 	    ValueDict::const_iterator field = value->find(column);
 	    result->insert(pair<Identifier,Value>(field->first, field->second));
 	}
@@ -345,7 +345,19 @@ ValueDict* HeapTable::project(Handle handle, const ColumnNames* column_names){
     return result;
 
 }
-
+// =======
+// 	BlockID block = handle.first;
+// 	RecordID record = handle.second;
+// 	SlottedPage* block = file.get(block_id);
+// 	Dbt* data= block->get(record);
+// 	ValueDict* value = unmarshal(dbt);
+// 	ValueDict* ret;
+// 	for (auto const& column_name: *column_names) {
+// 		*ret[column_name]= *value[column_name];
+// 	}
+// 	return ret;
+// }
+	   
 ValueDict* HeapTable::validate(const ValueDict* row){
     ValueDict* wholeRow = new ValueDict;
     for (auto const& column : this->column_names){
@@ -374,19 +386,6 @@ Handle HeapTable::append(const ValueDict* row){
     this->file->put(block);
     return Handle(this->file->get_last_block_id(), record);
 }
-// =======
-// 	BlockID block = handle.first;
-// 	RecordID record = handle.second;
-// 	SlottedPage* block = file.get(block_id);
-// 	Dbt* data= block->get(record);
-// 	ValueDict* value = unmarshal(dbt);
-// 	ValueDict* ret;
-// 	for (auto const& column_name: *column_names) {
-// 		*ret[column_name]= *value[column_name];
-// 	}
-// 	return ret;
-// }
-
 
 //from klundeen
 // return the bits to go into the file
@@ -448,6 +447,7 @@ ValueDict* HeapTable::unmarshal(Dbt* data){
     	else {
 	            throw DbRelationError("Only know how to marshal INT and TEXT");
     	}
+    }
 
 	return row;
 }
