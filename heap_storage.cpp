@@ -213,7 +213,7 @@ SlottedPage* HeapFile::get_new(void) {
     this->db.get(nullptr, &key, &data, 0);
     return new SlottedPage(data, block_id, false);
 }
-<<<<<<< HEAD
+
 
 SlottedPage* HeapFile::get(BlockID block_id){
     char block[SlottedPage::BLOCK_SZ];
@@ -224,15 +224,7 @@ SlottedPage* HeapFile::get(BlockID block_id){
     return new SlottedPage(data, block_id, false);
 }
 
-=======
-//get block 
-SlottedPage* HeapFile::get(BlockID block_id) {
-	Dbt key(&block_id, sizeof(block_id));
-	Dbt data;
-	this->db.get(nullptr, &key, &data, 0);
-	return new SlottedPage(data, block_id, false);
-}
->>>>>>> e3f89b3042f98112e17532755b24f709b862ed91
+
 //write block into file
 void HeapFile::put(DbBlock* block){
 	BlockID block_id = block->get_block_id();
