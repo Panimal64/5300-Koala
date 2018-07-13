@@ -21,10 +21,10 @@ string tableRefInfoToString(const TableRef *table);
 
 string tableRefInfoToString(const TableRef *table) {
     string tableString;
-    bool hasAlias = false;
+    //bool hasAlias = false;
     string aliasAS = "";
     if (table->alias != NULL){
-        hasAlias = true;
+        //hasAlias = true;
         aliasAS ="AS ";
     }
     //for joins
@@ -34,7 +34,10 @@ string tableRefInfoToString(const TableRef *table) {
     string  joinCond =""; //join cond
    
     switch (table->type) {
-    
+	
+	case kTableSelect:
+	    break; //not implemented, this clears warning
+
         case kTableName: 
         {
             tableString += table->name;
@@ -329,7 +332,7 @@ int main(int argc, char **argv) {
         }
         //print out sqlstatment
         else{
-            for (int i = 0 ; i< result->size(); i++){
+            for (unsigned int i = 0 ; i< result->size(); i++){
                 //hsql::SQLStatement* statement = result->getStatement(i);
                 cout << execute(result->getStatement(i)) << endl;
             }

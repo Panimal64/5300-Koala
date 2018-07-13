@@ -9,7 +9,7 @@ OBJS       = sql5300.o heap_storage.o
 
 # Rule for linking
 sql5300: $(OBJS)
-    g++ -L$(LIB_DIR) -o $@ $(OBJS) -ldb_cxx -lsqlparser
+	g++ -L$(LIB_DIR) -o $@ $(OBJS) -ldb_cxx -lsqlparser
 
 sql5300.o : heap_storage.h storage_engine.h
 heap_storage : heap_storage.h storage_engine.h

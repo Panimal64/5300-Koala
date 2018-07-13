@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "heap_storage.h";
+#include <cstring>
+#include "heap_storage.h"
 using namespace std;
 
 typedef u_int16_t u16;
@@ -36,7 +37,7 @@ RecordID SlottedPage::add(const Dbt* data) throw(DbBlockNoRoomError) {
 Dbt* SlottedPage::get(RecordID record_id){
     u16 size, loc;
     get_header(size, loc, record_id);
-    if (loc == NULL){
+    if (!loc){
 	return NULL;
     }
     Dbt* result = new Dbt(this->address(loc), size);
@@ -51,19 +52,19 @@ Dbt* SlottedPage::get(RecordID record_id){
 void SlottedPage::put(RecordID record_id, const Dbt &data) throw(DbBlockNoRoomError){
     u16 size, loc;
     get_header(size, loc, record_id);
-    u16 new_size = data->get_size();
+    u16 new_size = data.get_size();
     if (new_size > size){
 	u16 extra = new_size - size;
 		if(has_room(extra)){
 		    slide(loc + new_size, loc + size);//sliding left to add room
-		    memcpy(this->address(loc-extra), data->get_data(), new_size);
+		    memcpy(this->address(loc-extra), data.get_data(), new_size);
 		}
 		else{
 		    throw DbBlockNoRoomError("Block is full!");
 		}
     }
     else{
-	memcpy(this->address(loc), data->get_data(), new_size);
+	memcpy(this->address(loc), data.get_data(), new_size);
 	slide(loc + new_size, loc + size);//sliding right to leave room behind
     }
     get_header(size, loc, record_id);
@@ -85,27 +86,27 @@ void SlottedPage::del(RecordID record_id){
 //number of records we have saved in the object variable.  And we push back
 //the number of any that exist into the vector.  Then simply return that vector
 //----Maybe make sure we release this memory?---
-RecordIDs* ids(void){
+RecordIDs* SlottedPage::ids(void){
     RecordIDs* record_ids = new RecordIDs();
     for (int i = 1; i < this->num_records; i++){
 		u16 size, loc;
 		get_header(size, loc, i);
 		if (loc != 0){
-		    record_ids->pushback(i); //make sure this is right
+		    record_ids->push_back(i); //make sure this is right
 		}
     }
     return record_ids;
 }
 
 //get the header information for a given id.
-void SlottedPage::get_header(u_int16_t &size, u_int16_t &loc, RecordID id=0){
+void SlottedPage::get_header(u_int16_t &size, u_int16_t &loc, RecordID id){
     loc = get_n(id*4);
     size = get_n(id*4 + 2);
 }
 
 
 //from klundeen
-void SlottedPage::put_header(RecordID id = 0, u16 size = 0, u16 loc = 0) {
+void SlottedPage::put_header(RecordID id, u16 size, u16 loc) {
     if (id == 0) { // called the put_header() version and using the default params
         size = this->num_records;
         loc = this->end_free;
@@ -135,11 +136,13 @@ void SlottedPage::slide(u_int16_t start, u_int16_t end){
 
     //adjust newheaders
     u16 size, loc;
-    for (int record_id : ids()){ //will the memory here be released? be wary of this statement
-	get_header(size, loc, record_id);
+    RecordIDs* allIds = ids();//will the memory here be released? be wary of this statement
+    for (unsigned int i = 0; i < allIds->size(); i++){
+	RecordID id = allIds->at(i);
+	get_header(size, loc, id);
 	if (loc <= start){
 	    loc += shift;
-	    put_header(record_id, size, loc);
+	    put_header(id, size, loc);
 	}
     }
     this->end_free += shift;
@@ -220,7 +223,7 @@ SlottedPage* HeapFile::get(BlockID block_id){
     Dbt data;
     Dbt key(&block_id, sizeof(block_id));
     this->db.get(nullptr, &key, &data, 0);
-    return SlottedPage(data, block_id, false);
+    return new SlottedPage(data, block_id, false);
 }
 //write block into file
 void HeapFile::put(DbBlock* block){
@@ -233,7 +236,7 @@ void HeapFile::put(DbBlock* block){
 //push a block id number to BLOCK ID
 BlockIDs* HeapFile::block_ids(){
 	BlockIDs* ids = new BlockIDs(); 
-	for(int block = 1; block <= this->last; block++){
+	for(unsigned int block = 1; block <= this->last; block++){
 		ids->push_back(block); 
 	}
 	return ids;
@@ -288,11 +291,11 @@ Handle HeapTable::insert(const ValueDict* row){
 		this->file.get_new();
 	}
 	Dbt* data = marshal(row);
-	SlottedPage* page = this.get(get_last_block_id);
+	SlottedPage* page = this->get(this->file.get_last_block_id());
 	RecordID record =page->add(data);
 	this->file.put(page);
 	Handle handle;
-	handle->push_back(Handle(page->get_block_id(), record));
+	handle.push_back(Handle(page->get_block_id(), record));
 	return handle;
 }
 //Updates data on a page
@@ -303,7 +306,7 @@ void HeapTable::update(const Handle handle, const ValueDict* new_values){
 	BlockID block = handle.first;
 	RecordID record = handle.second;
 
-	SlottedPage* page= get_block(block);
+	SlottedPage* page = get_block(block);
 	page->put(record, *data);
 	this->file.put(page);
 
@@ -396,7 +399,7 @@ ValueDict* HeapTable::validate(const ValueDict* row){
 
 Handle HeapTable::append(const ValueDict* row){
     Dbt* data = this->marshal(row);
-    SlottedPage* block = this->file.get(this->file->get_last_block_id());
+    SlottedPage* block = this->file.get(this->file.get_last_block_id());
     RecordID record;
     try{
 	record = block->add(data);
