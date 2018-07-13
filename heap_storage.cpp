@@ -213,6 +213,16 @@ SlottedPage* HeapFile::get_new(void) {
     this->db.get(nullptr, &key, &data, 0);
     return new SlottedPage(data, block_id, false);
 }
+
+SlottedPage* HeapFile::get(BlockID block_id){
+    char block[SlottedPage::BLOCK_SZ];
+    memset(block, 0, sizeof(block));
+    Dbt data(block, sizeof(block));
+    Dbt key(&block_id, sizeof(block_id));
+    this->db.get(NULL, &key, &data, 0);
+    return new SlottedPage(data, block_id, false);
+}
+
 //write block into file
 void HeapFile::put(DbBlock* block){
 	BlockID block_id = block->get_block_id();

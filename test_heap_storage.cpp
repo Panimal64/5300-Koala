@@ -1,5 +1,8 @@
-
+#include "storage_engine.h"
 #include "heap_storage.h"
+
+using namespace std;
+
 // test function -- returns true if all tests pass
 bool test_heap_storage() {
 	ColumnNames column_names;
