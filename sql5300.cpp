@@ -1,18 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <cstring>
 #include <iostream>
-#include <string>
-#include <cassert>
 #include "db_cxx.h"
 #include "SQLParser.h"
 #include "sqlhelper.h"
-#include "heap_storage.h"
 
 using namespace std;
 using namespace hsql;
-
-DbEnv* _DB_ENV;
 
 void initializeDBenv(char *DBenv);
 string execute(const SQLStatement *query);
@@ -23,10 +17,10 @@ string tableRefInfoToString(const TableRef *table);
 
 string tableRefInfoToString(const TableRef *table) {
     string tableString;
-    //bool hasAlias = false;
+    bool hasAlias = false;
     string aliasAS = "";
     if (table->alias != NULL){
-        //hasAlias = true;
+        hasAlias = true;
         aliasAS ="AS ";
     }
     //for joins
@@ -36,10 +30,7 @@ string tableRefInfoToString(const TableRef *table) {
     string  joinCond =""; //join cond
    
     switch (table->type) {
-	
-	case kTableSelect:
-	    break; //not implemented, this clears warning
-
+    
         case kTableName: 
         {
             tableString += table->name;
@@ -98,23 +89,14 @@ string tableRefInfoToString(const TableRef *table) {
             break;
         case kTableCrossProduct:
         {
-		//not working
-//             for (int i = 0; table->list->size()-1;i++) {
-//                 tableString += tableRefInfoToString(table->list->at(i));
-//                 tableString += " , ";
-// 		if(table->list->at(++i) == table->list->back()){
-// 			tableString += tableRefInfoToString(table->list->at(i));
-// 		}
-                
-//             }
-	//working
-	bool doComma = false;
-	for (TableRef* tbl : *table->list) {
-		if (doComma)
-			tableString  += ", ";
-		tableString += tableRefInfoToString(tbl);
-		doComma = true;
-	}
+            bool doComma = false;
+            for (TableRef* tbl : *table->list) {
+                if (doComma)
+                    ret += ", ";
+                ret += tableRefInfoToString(tbl);
+                doComma = true;
+             }
+    
 
             break;
         }   
@@ -125,34 +107,34 @@ string tableRefInfoToString(const TableRef *table) {
 
 string opToString(const Expr *expr){
     if (expr == NULL){
-	return "null";
+    return "null";
     }
 
     string ret;
 
     if (expr->opType == Expr::NOT){
-	ret += "NOT ";
+    ret += "NOT ";
     }
     //LHS of the operator
     ret += expressionToString(expr->expr) + " ";
     
     switch (expr->opType){
-	case Expr::SIMPLE_OP:
-	    ret += expr->opChar;
-	    break;
-	case Expr::AND:
-	    ret += "AND";
-	    break;
-	case Expr::OR:
-	    ret+= "OR";
-	    break;
-	default:
-	    break; //good style, handles if not is used
+    case Expr::SIMPLE_OP:
+        ret += expr->opChar;
+        break;
+    case Expr::AND:
+        ret += "AND";
+        break;
+    case Expr::OR:
+        ret+= "OR";
+        break;
+    default:
+        break; //good style, handles if not is used
     }
     
     //RHS of the operator in the case of anything but NOT
     if(expr->expr2 != NULL){
-	ret += " " + expressionToString(expr->expr2);
+    ret += " " + expressionToString(expr->expr2);
     }
     return ret;
 }
@@ -162,39 +144,39 @@ string opToString(const Expr *expr){
 string expressionToString(const Expr *expr){
     string ret;
     switch(expr->type){
-	case kExprStar:
-	    ret += "*";
-	    break;
-	case kExprColumnRef:
-	    if (expr->table != NULL){
-		ret += string(expr->table) + ".";
-	    }
-	    break;
-	case kExprLiteralString:
-	    ret += expr -> name;
-	    break;
-	case kExprLiteralFloat:
-	    ret += to_string(expr->fval);
-	    break;
-	case kExprLiteralInt:
-	    ret += to_string(expr->ival);
-	    break;
-	case kExprFunctionRef:
-	    ret += string(expr->name) + "?" + expr->expr->name;
-	    break;
-	case kExprOperator:
-	    ret += opToString(expr);
-	    break;
-	default:
-	    ret += "???"; //missing expr type
-	    break;
+    case kExprStar:
+        ret += "*";
+        break;
+    case kExprColumnRef:
+        if (expr->table != NULL){
+        ret += string(expr->table) + ".";
+        }
+        break;
+    case kExprLiteralString:
+        ret += expr -> name;
+        break;
+    case kExprLiteralFloat:
+        ret += to_string(expr->fval);
+        break;
+    case kExprLiteralInt:
+        ret += to_string(expr->ival);
+        break;
+    case kExprFunctionRef:
+        ret += string(expr->name) + "?" + expr->expr->name;
+        break;
+    case kExprOperator:
+        ret += opToString(expr);
+        break;
+    default:
+        ret += "???"; //missing expr type
+        break;
     }
     if (expr->alias != NULL){
-	ret += string(" AS ") + expr->alias;
+    ret += string(" AS ") + expr->alias;
     }
     return ret;
 }
-	
+    
 
 
 //execute select function:
@@ -203,15 +185,15 @@ string selectTable(const SelectStatement *stmt){
    
     bool doComma = false;
     for (Expr* expr : *stmt->selectList){
-	if(doComma){
-	    ret += ", ";
-	}
-	ret += expressionToString(expr);
-	doComma = true;
+    if(doComma){
+        ret += ", ";
+    }
+    ret += expressionToString(expr);
+    doComma = true;
     }
     ret += " FROM " + tableRefInfoToString(stmt->fromTable);
     if (stmt->whereClause != NULL){
-	ret += " WHERE " + expressionToString(stmt->whereClause);
+    ret += " WHERE " + expressionToString(stmt->whereClause);
     }
     
     return ret;
@@ -220,18 +202,18 @@ string selectTable(const SelectStatement *stmt){
 string columnDefinitionToString(const ColumnDefinition *col){
     string ret(col->name);
     switch (col->type){
-	case ColumnDefinition::DOUBLE:
-	    ret += " DOUBLE";
-	    break;
-	case ColumnDefinition::INT:
-	    ret += " INT";
-	    break;
-	case ColumnDefinition::TEXT:
-	    ret += " TEXT";
-	    break;
-	default:
-	ret += " ...";
-	break;
+    case ColumnDefinition::DOUBLE:
+        ret += " DOUBLE";
+        break;
+    case ColumnDefinition::INT:
+        ret += " INT";
+        break;
+    case ColumnDefinition::TEXT:
+        ret += " TEXT";
+        break;
+    default:
+    ret += " ...";
+    break;
     }
     return ret;
 }
@@ -241,18 +223,21 @@ void initializeDBenv(char *DBenv){
 
     cout << "(sql5300: running with database environment at"<<DBenv<< ")"<<endl;
 
-    DbEnv env(0U);
-	env.set_message_stream(&std::cout);
-	env.set_error_stream(&std::cerr);
+    DbEnv* myEnv= new DbEnv(0U);
+    myEnv->set_message_stream(&cout);
+    myEnv->set_error_stream(&cerr);
+
     //attempt to create environment 
     try {
-        env.open(DBenv, DB_CREATE | DB_INIT_MPOOL, 0);
+        myEnv->open(DBenv, DB_CREATE | DB_INIT_MPOOL, 0);
     } catch(DbException &e) {
         std::cerr << e.what() << std::endl;
+        exit(1);
     }
-    _DB_ENV =&env;
+
 }
 
+//create table using passed sql statement
 string createTable(const CreateStatement *stmt) {
 
     string sql_statement("CREATE TABLE ");
@@ -319,10 +304,10 @@ int main(int argc, char **argv) {
         if(SQLinput == "quit"){
             break;
         }
-    	if (SQLinput == "test") {
-			cout << "test_heap_storage: " << (test_heap_storage() ? "ok" : "failed") << endl;
-			continue;
-	}
+        if (SQLinput == "test") {
+            cout << "test_heap_storage: " << (test_heap_storage() ? "ok" : "failed") << endl;
+            continue;
+        }
         //hyrise parser
         SQLParserResult *result = SQLParser::parseSQLString(SQLinput);
         //check if hyrise function is Valid, continue loop if not
@@ -332,7 +317,7 @@ int main(int argc, char **argv) {
         }
         //print out sqlstatment
         else{
-            for (unsigned int i = 0 ; i< result->size(); i++){
+            for (int i = 0 ; i< result->size(); i++){
                 //hsql::SQLStatement* statement = result->getStatement(i);
                 cout << execute(result->getStatement(i)) << endl;
             }
@@ -342,5 +327,4 @@ int main(int argc, char **argv) {
     }
     return 0;
 }
-
 
