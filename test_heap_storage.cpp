@@ -1,3 +1,5 @@
+
+#include "heap_storage.h"
 // test function -- returns true if all tests pass
 bool test_heap_storage() {
 	ColumnNames column_names;
