@@ -248,12 +248,18 @@ BlockIDs* HeapFile::block_ids(){
 //open db 
 
 void HeapFile::db_open(uint flags){
-	if(this->closed == true){
-		return;
-	}
-	this->db.open(nullptr, this->dbfilename.c_str(), nullptr, DB_RECNO,flags,0);
-	//this->last=db.get(DB_LAST); //get last key/data pair of db Check if works
-	this->closed = false;
+	if(!this->closed){
+                return;
+        }
+        DB_BTREE_STAT *stat;
+        this->db.set_message_stream(_DB_ENV->get_message_stream());
+        this->db.set_error_stream(_DB_ENV->get_error_stream());
+        this->db.set_re_len(DbBlock::BLOCK_SZ);
+        this->dbfilename=this->name + ".db";
+        this->db.open(nullptr, this->dbfilename.c_str(), nullptr, DB_RECNO,flags,0);
+        db.stat(nullptr, &stat, 0);
+        last = stat->bt_ndata;
+        this->closed = false;
 }
 /**
  * @class HeapTable - Heap storage engine (implementation of DbRelation)
