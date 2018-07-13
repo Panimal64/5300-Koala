@@ -19,12 +19,11 @@ test_heap_storage.o : heap_storage.h storage_engine.h
 %.o: %.cpp
 	g++ -I$(INCLUDE_DIR) $(CCFLAGS) -o "$@" "$<"
 
-<<<<<<< HEAD
+
 # executable rule
 #sql5300: $(OBJS)
 #	g++ -L$(LIB_DIR) -o $@ $< -ldb_cxx -lsqlparser
-=======
->>>>>>> e3f89b3042f98112e17532755b24f709b862ed91
+
 
 #clean file
 clean:
