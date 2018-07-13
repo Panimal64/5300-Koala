@@ -239,19 +239,18 @@ void initializeDBenv(char *DBenv){
 
     cout << "(sql5300: running with database environment at"<<DBenv<< ")"<<endl;
 
-    DbEnv myEnv(0U);
-    myEnv.set_message_stream(&cout);
-    myEnv.set_error_stream(&cerr);
+    DbEnv* myEnv= new DbEnv(0U);
+    myEnv->set_message_stream(&cout);
+    myEnv->set_error_stream(&cerr);
 
     //attempt to create environment 
     try {
-        myEnv.open(DBenv, DB_CREATE | DB_INIT_MPOOL, 0);
+        myEnv->open(DBenv, DB_CREATE | DB_INIT_MPOOL, 0);
     } catch(DbException &e) {
         std::cerr << e.what() << std::endl;
     }
 
 }
-
 
 string createTable(const CreateStatement *stmt) {
 
