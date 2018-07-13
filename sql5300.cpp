@@ -4,9 +4,11 @@
 #include "db_cxx.h"
 #include "SQLParser.h"
 #include "sqlhelper.h"
-
+#include "heap_storage.h"
 using namespace std;
 using namespace hsql;
+
+DbEnv*  _DB_ENV;
 
 void initializeDBenv(char *DBenv);
 string execute(const SQLStatement *query);
@@ -17,11 +19,9 @@ string tableRefInfoToString(const TableRef *table);
 
 string tableRefInfoToString(const TableRef *table) {
     string tableString;
-    bool hasAlias = false;
     string aliasAS = "";
     if (table->alias != NULL){
-        hasAlias = true;
-        aliasAS ="AS ";
+        aliasAS =" AS ";
     }
     //for joins
     string joinStr= "";
@@ -30,11 +30,13 @@ string tableRefInfoToString(const TableRef *table) {
     string  joinCond =""; //join cond
    
     switch (table->type) {
-    
+        case kTableSelect:
+        tableString += ""; 
+        break;
         case kTableName: 
         {
             tableString += table->name;
-            tableString +=aliasAS;
+            tableString +=aliasAS + table->alias;
             break;
         }
             
@@ -92,8 +94,8 @@ string tableRefInfoToString(const TableRef *table) {
             bool doComma = false;
             for (TableRef* tbl : *table->list) {
                 if (doComma)
-                    ret += ", ";
-                ret += tableRefInfoToString(tbl);
+                    joinStr += ", ";
+                joinStr += tableRefInfoToString(tbl);
                 doComma = true;
              }
     
@@ -218,22 +220,23 @@ string columnDefinitionToString(const ColumnDefinition *col){
     return ret;
 }
 
-//set db environement 
+//set db environement, not working atm 
 void initializeDBenv(char *DBenv){
 
-    cout << "(sql5300: running with database environment at"<<DBenv<< ")"<<endl;
 
-    DbEnv* myEnv= new DbEnv(0U);
-    myEnv->set_message_stream(&cout);
-    myEnv->set_error_stream(&cerr);
+cout << "(sql5300: running with database environment at"<<DBenv<< ")"<<endl;
 
-    //attempt to create environment 
+    DbEnv env(0U);
+    env.set_message_stream(&cout);
+    env.set_error_stream(&cerr);
     try {
-        myEnv->open(DBenv, DB_CREATE | DB_INIT_MPOOL, 0);
-    } catch(DbException &e) {
-        std::cerr << e.what() << std::endl;
+        env.open(DBenv, DB_CREATE | DB_INIT_MPOOL, 0);
+    } catch (DbException& exc) {
+        cerr << "(sql5300: " << exc.what() << ")";
         exit(1);
     }
+    _DB_ENV = &env;
+    
 
 }
 
@@ -288,9 +291,20 @@ int main(int argc, char **argv) {
         return 1;
     }
     //initialize environment
-    initializeDBenv(argv[1]);
+    //initializeDBenv(argv[1]);
     //loop to get user inputs
-    
+    char *myenv = argv[1];
+    DbEnv env(0U);
+    env.set_message_stream(&cout);
+    env.set_error_stream(&cerr);
+    try {
+        env.open(myenv, DB_CREATE | DB_INIT_MPOOL, 0);
+    } catch (DbException& exc) {
+        cerr << "(sql5300: " << exc.what() << ")";
+        exit(1);
+    }
+    _DB_ENV = &env;
+
     //SQL Shell
     while(true){
         string SQLinput;
@@ -317,7 +331,7 @@ int main(int argc, char **argv) {
         }
         //print out sqlstatment
         else{
-            for (int i = 0 ; i< result->size(); i++){
+            for (uint i = 0 ; i< result->size(); i++){
                 //hsql::SQLStatement* statement = result->getStatement(i);
                 cout << execute(result->getStatement(i)) << endl;
             }
@@ -325,6 +339,6 @@ int main(int argc, char **argv) {
         }
 
     }
-    return 0;
+    return EXIT_SUCCESS;
 }
 
