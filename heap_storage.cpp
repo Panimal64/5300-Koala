@@ -314,7 +314,9 @@ void HeapTable::del(const Handle handle){
 	page->del(record);
 
 }
-
+Handles* HeapTable::select() {
+	return select(nullptr);
+}
 //from klundeen
 //Used for SELECTNG a handle with specific rows
 Handles* HeapTable::select(const ValueDict* where) {
