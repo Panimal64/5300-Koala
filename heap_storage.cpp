@@ -175,7 +175,7 @@ void* SlottedPage::address(u16 offset) {
         for buffer management and file management.
         Uses SlottedPage for storing records within blocks.
  */
-HeapFile::HeapFile(std::string name) : DbFile(name), dbfilename(""), last(0), closed(true), db(_DB_ENV, 0) {
+HeapFile::HeapFile(std::string name) : DbFile(name), last(0), closed(true), db(_DB_ENV, 0) {
 	this->dbfilename = this->name + ".db";
 }
 
@@ -204,7 +204,7 @@ void HeapFile::close(void){
 }
 // written by klundeen
 SlottedPage* HeapFile::get_new(void) {
-    char block[DB_BLOCK_SZ]{}
+    char block[DB_BLOCK_SZ];
     std::memset(block, 0, sizeof(block));
     Dbt data(block, sizeof(block));
 
@@ -286,17 +286,10 @@ void HeapTable::close(){
 }
 //insert row into db page -> block
 Handle HeapTable::insert(const ValueDict* row){
+	this->open();
 	validate(row);
-	if(this->file.get_last_block_id() == 0){
-		this->file.get_new();
-	}
-	Dbt* data = marshal(row);
-	SlottedPage* page = this->get(this->file.get_last_block_id());
-	RecordID record =page->add(data);
-	this->file.put(page);
-	Handle handle;
-	handle.push_back(Handle(page->get_block_id(), record));
-	return handle;
+	return this->append(row);
+	
 }
 //Updates data on a page
 void HeapTable::update(const Handle handle, const ValueDict* new_values){
@@ -306,7 +299,7 @@ void HeapTable::update(const Handle handle, const ValueDict* new_values){
 	BlockID block = handle.first;
 	RecordID record = handle.second;
 
-	SlottedPage* page = get_block(block);
+	SlottedPage* page= this->file.get(block);
 	page->put(record, *data);
 	this->file.put(page);
 
