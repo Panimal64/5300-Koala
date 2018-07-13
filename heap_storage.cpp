@@ -175,9 +175,9 @@ void* SlottedPage::address(u16 offset) {
         for buffer management and file management.
         Uses SlottedPage for storing records within blocks.
  */
-HeapFile::HeapFile(std::string name) : DbFile(name), last(0), closed(true), db(_DB_ENV, 0) {
-	this->dbfilename = this->name + ".db";
-}
+//HeapFile::HeapFile(std::string name) : DbFile(name), last(0), closed(true), db(_DB_ENV, 0) {
+//	this->dbfilename = this->name + ".db";
+//}
 
 //create file
 void HeapFile::create(void){
@@ -202,26 +202,14 @@ void HeapFile::close(void){
 	this->closed = true;
 
 }
-// written by klundeen
 SlottedPage* HeapFile::get_new(void) {
-    char block[DB_BLOCK_SZ];
+    char block[DbBlock::BLOCK_SZ];
     std::memset(block, 0, sizeof(block));
     Dbt data(block, sizeof(block));
 
     int block_id = ++this->last;
     Dbt key(&block_id, sizeof(block_id));
 
-    // write out an empty block and read it back in so Berkeley DB is managing the memory
-    SlottedPage* page = new SlottedPage(data, this->last, true);
-    this->db.put(nullptr, &key, &data, 0); // write it out with initialization applied
-    this->db.get(nullptr, &key, &data, 0);
-    return page;
-}
-
-SlottedPage* HeapFile::get(BlockID block_id){
-	
-    Dbt data;
-    Dbt key(&block_id, sizeof(block_id));
     this->db.get(nullptr, &key, &data, 0);
     return new SlottedPage(data, block_id, false);
 }
