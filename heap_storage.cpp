@@ -187,6 +187,7 @@ void HeapFile::create(void){
 //delete file
 void HeapFile::drop(void){
     close();
+    Db db(_DB_ENV, 0);
     db.remove(this->dbfilename.c_str(), nullptr,0); //filename, flags
 }
 //open file
@@ -216,9 +217,9 @@ SlottedPage* HeapFile::get_new(void) {
 
 
 SlottedPage* HeapFile::get(BlockID block_id){
-    char block[SlottedPage::BLOCK_SZ];
-    memset(block, 0, sizeof(block));
-    Dbt data(block, sizeof(block));
+    //char block[SlottedPage::BLOCK_SZ];
+    //memset(block, 0, sizeof(block));
+    Dbt data;//(block, sizeof(block));
     Dbt key(&block_id, sizeof(block_id));
     this->db.get(NULL, &key, &data, 0);
     return new SlottedPage(data, block_id, false);
@@ -294,8 +295,10 @@ void HeapTable::close(){
 //insert row into db page -> block
 Handle HeapTable::insert(const ValueDict* row){
     this->open();
-    validate(row);
-    return this->append(row);
+    ValueDict* inRow = validate(row);
+    Handle newHandle = append(inRow);
+    delete inRow;
+    return newHandle;
     
 }
 //Updates data on a page
@@ -387,12 +390,14 @@ ValueDict* HeapTable::project(Handle handle, const ColumnNames* column_names){
 ValueDict* HeapTable::validate(const ValueDict* row){
     ValueDict* wholeRow = new ValueDict;
     for (auto const& column : this->column_names){
+	Value value;
         ValueDict::const_iterator field = row->find(column);
         if (field == row->end()){
             throw DbRelationError("Failed Validation");
         }
         else{
-            wholeRow->insert(pair<Identifier, Value>(field->first, field->second));
+	    value = field->second;
+            (*wholeRow)[column] = value;
         }
         
     }
@@ -411,6 +416,8 @@ Handle HeapTable::append(const ValueDict* row){
     record = block->add(data);
     }
     this->file.put(block);
+    delete[](char*)data->get_data();
+    delete data;
     return Handle(this->file.get_last_block_id(), record);
 }
 
