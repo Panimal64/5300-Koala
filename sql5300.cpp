@@ -1,9 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <cstring>
 #include <iostream>
+#include <string>
+#include <cassert>
 #include "db_cxx.h"
 #include "SQLParser.h"
 #include "sqlhelper.h"
+#include "heap_storage.h"
 
 using namespace std;
 using namespace hsql;
@@ -312,6 +316,10 @@ int main(int argc, char **argv) {
         if(SQLinput == "quit"){
             break;
         }
+    	if (SQLinput == "test") {
+			cout << "test_heap_storage: " << (test_heap_storage() ? "ok" : "failed") << endl;
+			continue;
+	}
         //hyrise parser
         SQLParserResult *result = SQLParser::parseSQLString(SQLinput);
         //check if hyrise function is Valid, continue loop if not
