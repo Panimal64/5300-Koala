@@ -97,7 +97,7 @@ QueryResult *SQLExec::execute(const SQLStatement *statement) throw(SQLExecError)
 }
 
 /**
-Obtain the type of colum and it's attributes and data type
+Obtain the type of column and it's attributes and data type
 */
 void SQLExec::column_definition(const ColumnDefinition *col, Identifier& column_name,
                                 ColumnAttribute& column_attribute) {
@@ -375,7 +375,9 @@ QueryResult *SQLExec::show_index(const ShowStatement *statement) {
     return new QueryResult(column_names, column_attributes, rows, result);
 }
 
-//Show statement for tables
+/**
+Show statement for tables
+*/
 QueryResult *SQLExec::show_tables() {
     ColumnNames* column_names = new ColumnNames;
     column_names->push_back("table_name");
