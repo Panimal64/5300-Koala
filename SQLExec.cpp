@@ -88,12 +88,32 @@ QueryResult *SQLExec::execute(const SQLStatement *statement) throw(SQLExecError)
                 return drop((const DropStatement *) statement);
             case kStmtShow:
                 return show((const ShowStatement *) statement);
+            // porting from Milestone5_prep    
+            case kStmtInsert:
+                return insert((const InsertStatement *) statement);
+            case kStmtDelete:
+                return del((const DeleteStatement *) statement);
+            case kStmtSelect:
+                return select((const SelectStatement *) statement);                
             default:
                 return new QueryResult("not implemented");
         }
     } catch (DbRelationError& e) {
         throw SQLExecError(string("DbRelationError: ") + e.what());
     }
+}
+
+// porting from Milestone5_prep
+QueryResult *SQLExec::insert(const InsertStatement *statement) {
+    return new QueryResult("INSERT statement not yet implemented");  // FIXME
+}
+
+QueryResult *SQLExec::del(const DeleteStatement *statement) {
+    return new QueryResult("DELETE statement not yet implemented");  // FIXME
+}
+
+QueryResult *SQLExec::select(const SelectStatement *statement) {
+    return new QueryResult("SELECT statement not yet implemented");  // FIXME
 }
 
 /**
