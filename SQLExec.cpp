@@ -10,7 +10,9 @@ The code has been implemented to work but the statments remain to allow the next
 to find the implemented code easier by searching for 'Fixme'.
 */
 #include "SQLExec.h"
+#include "EvalPlan.h"
 #include <iostream>
+
 using namespace std;
 using namespace hsql;
 
@@ -106,54 +108,57 @@ QueryResult *SQLExec::execute(const SQLStatement *statement) throw(SQLExecError)
 QueryResult *SQLExec::insert(const InsertStatement *statement) {
     Identifier table_name = statement->tableName;                  // get table name from insert statement     
     DbRelation& table = SQLExec::tables->get_table(table_name);    // use table name to obtain table from SQLExec::tables
-    //const ColumnNames& column_names = table.get_column_names();    // get names of columns
 
     ColumnNames column_names;
     ColumnAttributes column_attributes;
     SQLExec::tables->get_columns(table_name, column_names, column_attributes);     // get column info
 
-    ValueDict row;
-	Handles i_handles;
-	int i = 0;          // counter for row
-    int indices_n = 0;  // counter for index
+    ValueDict row;                  // construct row to do table insert
+	Handles i_handles;              // handles to store the row
+    int indices_n = 0;              // counter for index
+    bool eligible = true;           // flag to indicate whether it is eligible to execute INSERT
 
-    if (column_names.empty())   // check if the specific table does exist
-        throw SQLExecError(table_name + " does not exist!");
+    // check if the number of values matches the column number of table or the specific table does exist
+    if ((statement->values->size() != column_names.size()) || column_names.empty())
+        eligible = false;
 
-    if (column_names.size() != statement->columns->size())
-        throw DbRelationError("don't know how to handle NULLs, defaults, etc. yet"); 
+    if (statement->columns != NULL) {                              // if column info in INSERT command exists 
+        for ( uint i = 0; i < statement->columns->size(); i++) {   // scan all the columns of table
+            Identifier column_name = statement->columns->at(i);    // abstract the column name from INSERT command
+            if (find(column_names.begin(), column_names.end(), column_name) == column_names.end()) 
+                eligible = false;           // specific column of INSERT command can not find a match in table's columns
+        }
+    }
 
-	if (statement->columns != NULL) {   // only proceed with insert command which has non-null column(s)  
-		for (auto const &column_name : *statement->columns) {   // scan for each column of table
-            // check that given columns exist in table
-            if (find(column_names.begin(), column_names.end(), column_name) == column_names.end())
-			    throw SQLExecError(string("Column ") + column_name + " does not exist in " + table_name + "!");
-			else {
-				Expr *expr = statement->values->at(i++);        // abstract the type of expression 
-				switch (expr->type) {
-					case kExprLiteralString:                    // string type
-						row[column_name] = Value(expr->name);
-						break;
-					case kExprLiteralInt:                       // integer type
-						row[column_name] = Value(expr->ival);
-						break;
-                    default:                                    // others' types are unrecognized
-                        throw SQLExecError("Unrecognized column type");
-				}
-			}
-		}
-		i_handles.push_back(table.insert(&row));    // insert row to table
-
-        //add indices
-		for (auto const& index_name: SQLExec::indices->get_index_names(table_name)) {
-			DbIndex& index = SQLExec::indices->get_index(table_name, index_name); // get the DbIndex using table name/index name
-            indices_n++;
-			for (auto const &handle: i_handles)
-				index.insert(handle);   // insert record into index 
-		}
+    if (eligible) {                                             // eligible to execute INSERT
+        for( uint i = 0; i < statement->values->size(); i++) {  // scan all the values of INSERT command
+            Identifier column_name = column_names.at(i);        // abstract the column name from table
+            Expr *expr = statement->values->at(i);              // abstract the type of expression of INSERT command 
+		    switch (expr->type) {
+			    case kExprLiteralString:                        // string type
+				    row[column_name] = Value(expr->name);
+                    break;
+                case kExprLiteralInt:                           // integer type
+				    row[column_name] = Value(expr->ival);
+                    break;
+                default:                                        // others' types are unrecognized
+                    throw SQLExecError("Unrecognized column type");
+		    }
+        }
+        i_handles.push_back(table.insert(&row));                // insert row to table        
+    }
+    else    // not eligible to execute INSERT
+        throw DbRelationError("don't know how to handle NULLs, defaults, etc. yet");
+    // add indices
+	for (auto const& index_name: SQLExec::indices->get_index_names(table_name)) {
+		DbIndex& index = SQLExec::indices->get_index(table_name, index_name); // get the DbIndex using table name/index name
+        indices_n++;                // count for number of index
+		for (auto const &handle: i_handles)
+			index.insert(handle);   // insert record into index
 	}
 
-    return new QueryResult("successfully inserted " + to_string(i_handles.size()) + " row into " + table_name + " and " + to_string(indices_n) + " indices");  // FIXME MILESTONE5
+    return new QueryResult("successfully inserted " + to_string(i_handles.size()) + 
+                            " row into " + table_name + " and " + to_string(indices_n) + " indices");  // FIXME MILESTONE5
 }
 
 QueryResult *SQLExec::del(const DeleteStatement *statement) {
