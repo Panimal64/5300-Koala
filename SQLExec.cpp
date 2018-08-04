@@ -17,7 +17,6 @@ using namespace hsql;
 Tables* SQLExec::tables = nullptr;
 Indices* SQLExec::indices = nullptr;
 
-
 /**
 Allow results of query to print
 */
@@ -105,19 +104,68 @@ QueryResult *SQLExec::execute(const SQLStatement *statement) throw(SQLExecError)
 
 // porting from Milestone5_prep
 QueryResult *SQLExec::insert(const InsertStatement *statement) {
-    return new QueryResult("INSERT statement not yet implemented");  // FIXME
+    Identifier table_name = statement->tableName;                  // get table name from insert statement     
+    DbRelation& table = SQLExec::tables->get_table(table_name);    // use table name to obtain table from SQLExec::tables
+    //const ColumnNames& column_names = table.get_column_names();    // get names of columns
+
+    ColumnNames column_names;
+    ColumnAttributes column_attributes;
+    SQLExec::tables->get_columns(table_name, column_names, column_attributes);     // get column info
+
+    ValueDict row;
+	Handles i_handles;
+	int i = 0;          // counter for row
+    int indices_n = 0;  // counter for index
+
+    if (column_names.empty())   // check if the specific table does exist
+        throw SQLExecError(table_name + " does not exist!");
+
+    if (column_names.size() != statement->columns->size())
+        throw DbRelationError("don't know how to handle NULLs, defaults, etc. yet"); 
+
+	if (statement->columns != NULL) {   // only proceed with insert command which has non-null column(s)  
+		for (auto const &column_name : *statement->columns) {   // scan for each column of table
+            // check that given columns exist in table
+            if (find(column_names.begin(), column_names.end(), column_name) == column_names.end())
+			    throw SQLExecError(string("Column ") + column_name + " does not exist in " + table_name + "!");
+			else {
+				Expr *expr = statement->values->at(i++);        // abstract the type of expression 
+				switch (expr->type) {
+					case kExprLiteralString:                    // string type
+						row[column_name] = Value(expr->name);
+						break;
+					case kExprLiteralInt:                       // integer type
+						row[column_name] = Value(expr->ival);
+						break;
+                    default:                                    // others' types are unrecognized
+                        throw SQLExecError("Unrecognized column type");
+				}
+			}
+		}
+		i_handles.push_back(table.insert(&row));    // insert row to table
+
+        //add indices
+		for (auto const& index_name: SQLExec::indices->get_index_names(table_name)) {
+			DbIndex& index = SQLExec::indices->get_index(table_name, index_name); // get the DbIndex using table name/index name
+            indices_n++;
+			for (auto const &handle: i_handles)
+				index.insert(handle);   // insert record into index 
+		}
+	}
+
+    return new QueryResult("successfully inserted " + to_string(i_handles.size()) + " row into " + table_name + " and " + to_string(indices_n) + " indices");  // FIXME MILESTONE5
 }
 
 QueryResult *SQLExec::del(const DeleteStatement *statement) {
-    return new QueryResult("DELETE statement not yet implemented");  // FIXME
+    return new QueryResult("DELETE statement not yet implemented");  // FIXME MILESTONE5
 }
 
 QueryResult *SQLExec::select(const SelectStatement *statement) {
-    return new QueryResult("SELECT statement not yet implemented");  // FIXME
+    return new QueryResult("SELECT statement not yet implemented");  // FIXME MILESTONE5
 }
 
 /**
-Obtain the type of colum and it's attributes and data type
+Obtain the type of column and it's attributes and data type
 */
 void SQLExec::column_definition(const ColumnDefinition *col, Identifier& column_name,
                                 ColumnAttribute& column_attribute) {
