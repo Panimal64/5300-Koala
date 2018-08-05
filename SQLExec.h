@@ -90,5 +90,7 @@ protected:
      * @param column_attributes  returned by reference
      */
     static void column_definition(const hsql::ColumnDefinition *col, Identifier &column_name, ColumnAttribute &column_attribute);
+
+    static ValueDict *get_where_conjunction(const hsql::Expr *whereClause);
 };
 

@@ -165,8 +165,66 @@ QueryResult *SQLExec::del(const DeleteStatement *statement) {
     return new QueryResult("DELETE statement not yet implemented");  // FIXME MILESTONE5
 }
 
+ValueDict *SQLExec::get_where_conjunction(const Expr *whereClause) {
+    ValueDict* rows = new ValueDict();                                      // construct a return ValueDict
+    if (whereClause->type == kExprOperator) {                               // if expression type is kExprOperator
+        if (whereClause->opType == Expr::AND) {                             // if opType is AND, ex: id = 1 AND data = "one"
+            ValueDict* sub_row = get_where_conjunction(whereClause->expr);  // recursively invoke for expr
+            rows->insert(sub_row->begin(), sub_row->end());                 // merge expr's ValueDict
+            sub_row = get_where_conjunction(whereClause->expr2);            // recursively invoke for expr2
+            rows->insert(sub_row->begin(), sub_row->end());                 // merge expr2's ValueDict
+        }
+        else if (whereClause->opType == Expr::SIMPLE_OP) {                  // if opType is SIMPLE_OP, ex id = 1
+            Identifier column_name = whereClause->expr->name;               // store the key from expr->name
+            Value value;
+            switch (whereClause->expr2->type) {
+                case kExprLiteralString:                                    // if value is String
+                    value = Value(whereClause->expr2->name);
+                    break;
+                case kExprLiteralInt:                                       // if value is INT
+                    value = Value(whereClause->expr2->ival);
+                    break;
+                default:
+                    throw DbRelationError("Unrecognized value!");
+                    break;
+            }
+            (*rows)[column_name] = value;                                   // insert key and value into ValueDict
+        }
+        else
+            throw DbRelationError("Unsupport opType!");
+    }
+    else 
+        throw DbRelationError("Unsupport type!");
+
+    return rows;
+}
+
 QueryResult *SQLExec::select(const SelectStatement *statement) {
-    return new QueryResult("SELECT statement not yet implemented");  // FIXME MILESTONE5
+    DbRelation& table = tables->get_table(statement->fromTable->name);  // get the table from SELECT command
+    EvalPlan *plan = new EvalPlan(table);                               // create a new TableScan plan
+
+    ColumnNames* column_names = new ColumnNames;                        // construct new ColumnNames
+	ColumnAttributes* column_attributes = new ColumnAttributes;         // construct new ColumnAttributes
+
+    if (statement->whereClause != nullptr)                              // if whereClause is not nullptr
+        plan = new EvalPlan(get_where_conjunction(statement->whereClause), plan); // create a new plan for SELECT
+
+    if (statement->selectList->at(0)->type == kExprStar) {              // SELECT * from ...
+        *column_names = table.get_column_names();                       // get the column names of the table  
+        plan = new EvalPlan(EvalPlan::ProjectAll, plan);                // create a new plan for ProjectAll
+    }
+    else {
+        for (auto const column : *statement->selectList)                // scan all the columns after SELECT
+            column_names->push_back(column->name);                      // store columns which are prepared for projection
+
+        plan = new EvalPlan(column_names, plan);                        // create a new plan for Project particular column(s)
+    }
+    
+    EvalPlan *optimized = plan->optimize();                             // attempt to get the best equivalent evaluation plan
+	ValueDicts *rows = optimized->evaluate();                           // evaluate the plan
+	column_attributes = table.get_column_attributes(*column_names);     // get the attributes info using column names
+
+	return new QueryResult(column_names, column_attributes, rows, "Successfully returned " + to_string(rows->size()) + " rows.");
 }
 
 /**
