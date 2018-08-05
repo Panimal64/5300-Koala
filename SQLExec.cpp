@@ -163,7 +163,7 @@ QueryResult *SQLExec::insert(const InsertStatement *statement) {
 
 QueryResult *SQLExec::del(const DeleteStatement *statement) {
     Identifier table_name = statement->tableName;                           // get the table name from DELETE command
-    DbRelation& table = tables->get_table(table_name);                      // get the corresponding table
+    DbRelation& table = SQLExec::tables->get_table(table_name);             // get the corresponding table
     EvalPlan *plan = new EvalPlan(table);                                   // create a new TableScan plan 
     if (statement->expr != nullptr)                                         // if SELECT ... FROM ... WHERE
         plan = new EvalPlan(get_where_conjunction(statement->expr), plan);  // create a new plan for SELECT
@@ -233,29 +233,29 @@ ValueDict *SQLExec::get_where_conjunction(const Expr *whereClause) {
 }
 
 QueryResult *SQLExec::select(const SelectStatement *statement) {
-    DbRelation& table = tables->get_table(statement->fromTable->name);  // get the table from SELECT command
-    EvalPlan *plan = new EvalPlan(table);                               // create a new TableScan plan
+    DbRelation& table = SQLExec::tables->get_table(statement->fromTable->name);     // get the table from SELECT command    
+    EvalPlan *plan = new EvalPlan(table);                                           // create a new TableScan plan
 
-    ColumnNames* column_names = new ColumnNames;                        // construct new ColumnNames
-	ColumnAttributes* column_attributes = new ColumnAttributes;         // construct new ColumnAttributes
+    ColumnNames* column_names = new ColumnNames;                                    // construct new ColumnNames
+	ColumnAttributes* column_attributes = new ColumnAttributes;                     // construct new ColumnAttributes
 
-    if (statement->whereClause != nullptr)                              // if whereClause is not nullptr
-        plan = new EvalPlan(get_where_conjunction(statement->whereClause), plan); // create a new plan for SELECT
+    if (statement->whereClause != nullptr)                                          // if whereClause is not nullptr
+        plan = new EvalPlan(get_where_conjunction(statement->whereClause), plan);   // create a new plan for SELECT
 
-    if (statement->selectList->at(0)->type == kExprStar) {              // SELECT * from ...
-        *column_names = table.get_column_names();                       // get the column names of the table  
-        plan = new EvalPlan(EvalPlan::ProjectAll, plan);                // create a new plan for ProjectAll
+    if (statement->selectList->at(0)->type == kExprStar) {                          // do "SELECT * from ...""
+        *column_names = table.get_column_names();                                   // get the column names of the table  
+        plan = new EvalPlan(EvalPlan::ProjectAll, plan);                            // create a new plan for ProjectAll
     }
     else {
-        for (auto const column : *statement->selectList)                // scan all the columns after SELECT
-            column_names->push_back(column->name);                      // store columns which are prepared for projection
+        for (auto const column : *statement->selectList)                            // scan all the columns after SELECT
+            column_names->push_back(column->name);                                  // store columns which are prepared for projection
 
-        plan = new EvalPlan(column_names, plan);                        // create a new plan for Project particular column(s)
+        plan = new EvalPlan(column_names, plan);                                    // create a new plan for Project particular column(s)
     }
     
-    EvalPlan *optimized = plan->optimize();                             // attempt to get the best equivalent evaluation plan
-	ValueDicts *rows = optimized->evaluate();                           // evaluate the plan
-	column_attributes = table.get_column_attributes(*column_names);     // get the attributes info using column names
+    EvalPlan *optimized = plan->optimize();                                         // attempt to get the best equivalent evaluation plan
+	ValueDicts *rows = optimized->evaluate();                                       // evaluate the plan
+	column_attributes = table.get_column_attributes(*column_names);                 // get the attributes info using column names
 
 	return new QueryResult(column_names, column_attributes, rows, "Successfully returned " + to_string(rows->size()) + " rows.");
 }
