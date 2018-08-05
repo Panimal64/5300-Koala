@@ -162,7 +162,40 @@ QueryResult *SQLExec::insert(const InsertStatement *statement) {
 }
 
 QueryResult *SQLExec::del(const DeleteStatement *statement) {
-    return new QueryResult("DELETE statement not yet implemented");  // FIXME MILESTONE5
+    Identifier table_name = statement->tableName;                           // get the table name from DELETE command
+    DbRelation& table = tables->get_table(table_name);                      // get the corresponding table
+    EvalPlan *plan = new EvalPlan(table);                                   // create a new TableScan plan 
+    if (statement->expr != nullptr)                                         // if SELECT ... FROM ... WHERE
+        plan = new EvalPlan(get_where_conjunction(statement->expr), plan);  // create a new plan for SELECT
+
+    EvalPlan *optimized = plan->optimize();                                 // optimize the plan
+    EvalPipeline pipeline = optimized->pipeline();                          // pipeline gets handles
+
+    auto index_names = SQLExec::indices->get_index_names(table_name);       // get the corresponding index names
+    Handles *handles = pipeline.second;                                     // assign record ID to handles
+
+    int indices_n = index_names.size();                                     // count for number of indices
+    int row_n = 0;                                                          // counter of number of del rows
+
+    for (auto const& handle : *handles) {                                   // scan all the del rows
+        for (auto const& index_name : index_names) {                        // scan all the corresponding indices
+            DbIndex &index = SQLExec::indices->get_index(table_name, index_name);   // get index table 
+            index.del(handle);                                              // delete row's index
+        }
+    }
+
+    for (auto const& handle : *handles) {                                   // scan all the del rows
+        table.del(handle);                                                  // delete row in the table
+        row_n++;                                                            // count for number of del rows
+    }
+
+    delete handles;
+
+    string suffix = "successfully deleted " + to_string(row_n) + " rows";   // construct the del message
+    if (indices_n >0)                                                       // if index exists, show index info
+        suffix += " from " + to_string(indices_n) + " indices";
+
+    return new QueryResult(suffix);
 }
 
 ValueDict *SQLExec::get_where_conjunction(const Expr *whereClause) {
