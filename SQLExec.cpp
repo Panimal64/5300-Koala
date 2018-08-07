@@ -157,8 +157,15 @@ QueryResult *SQLExec::insert(const InsertStatement *statement) {
 			index.insert(handle);   // insert record into index
 	}
 
+    string index_message;
+
+    if (indices_n > 0)              // when indices_n is gerater than 0, show index info
+        index_message = " and " + to_string(indices_n) + " indices";
+    else                            // when indices_n is equal to 0, no need to show index info
+        index_message = "";
+
     return new QueryResult("successfully inserted " + to_string(i_handles.size()) + 
-                            " row into " + table_name + " and " + to_string(indices_n) + " indices");  // FIXME MILESTONE5
+                            " row into " + table_name + index_message);  // FIXME MILESTONE5
 }
 
 QueryResult *SQLExec::del(const DeleteStatement *statement) {
