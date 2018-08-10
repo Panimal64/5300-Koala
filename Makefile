@@ -31,7 +31,6 @@ heap_storage.o : $(HEAP_STORAGE_H)
 schema_tables.o : $(SCHEMA_TABLES_) ParseTreeToString.h
 sql5300.o : $(SQLEXEC_H) ParseTreeToString.h
 storage_engine.o : storage_engine.h
-EvalPlan.o : $(EVAL_PLAN_H)
 
 # General rule for compilation
 %.o: %.cpp
