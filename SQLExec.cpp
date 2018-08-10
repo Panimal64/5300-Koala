@@ -9,6 +9,7 @@ Additional notes:  All "FIXME" statements from MS4 prep file have been left inta
 The code has been implemented to work but the statments remain to allow the next group
 to find the implemented code easier by searching for 'Fixme'.
 */
+#include <algorithm>
 #include "SQLExec.h"
 #include "EvalPlan.h"
 #include <iostream>
@@ -373,57 +374,45 @@ Create index on a specific table using columns
 Use: CREATE INDEX indexname ON tablename(columnname)
 */
 QueryResult *SQLExec::create_index(const CreateStatement *statement) {
-    
-    
-    Identifier table_name = statement->tableName;
     Identifier index_name = statement->indexName;
-    Identifier index_type = statement->indexType;
-    ColumnNames* column_names = new ColumnNames;
-    ColumnAttributes* column_attributes = new ColumnAttributes;
+    Identifier table_name = statement->tableName;
+
+    // get underlying relation
+    DbRelation& table = SQLExec::tables->get_table(table_name);
+
+    // check that given columns exist in table
+    const ColumnNames& table_columns = table.get_column_names();
+    for (auto const& col_name: *statement->indexColumns)
+        if (find(table_columns.begin(), table_columns.end(), col_name) == table_columns.end())
+            throw SQLExecError(string("Column '") + col_name + "' does not exist in " + table_name);
+
+    // insert a row for every column in index into _indices
     ValueDict row;
-    Handles* index_handles = new Handles;
-    vector<char*>* index_columns = statement->indexColumns;
-
-
-    //Determine if BTREE or HASH
-    if (index_type == "BTREE"){
-        row["is_unique"] = true;
-    }
-    else{
-        row["is_unique"] = false;
-    }
-
-    //Check to see if column exists in table
-    tables->get_columns(table_name, *column_names,*column_attributes);
-    for(auto const& column : *index_columns){
-        bool check = false;
-        string col = column;
-        for(auto const& tblCol : *column_names) {
-            if(tblCol == col)
-                check = true;
-        }
-        if(!check)
-            throw SQLExecError("COLUMN NAME " + col + " IS NOT IN TABLE " + table_name);
-    }
-
-    //Insert row form index columns into _indices
     row["table_name"] = Value(table_name);
     row["index_name"] = Value(index_name);
-    row["index_type"] = Value(index_type);
-    
-    int seq_count = 0;
-    for (char* index_col : *index_columns) {
-        row["column_name"] = Value(index_col);
-        row["seq_in_index"] = ++seq_count;
-        Handle index_handle = SQLExec::indices->insert(&row);
-        index_handles->push_back(index_handle);
+    row["index_type"] = Value(statement->indexType);
+    row["is_unique"] = Value(string(statement->indexType) == "BTREE"); // assume HASH is non-unique --
+    int seq = 0;
+    Handles i_handles;
+    try {
+        for (auto const &col_name: *statement->indexColumns) {
+            row["seq_in_index"] = Value(++seq);
+            row["column_name"] = Value(col_name);
+            i_handles.push_back(SQLExec::indices->insert(&row));
+        }
+
+        DbIndex &index = SQLExec::indices->get_index(table_name, index_name);
+        index.create();
+
+    } catch (...) {
+        // attempt to remove from _indices
+        try {  // if any exception happens in the reversal below, we still want to re-throw the original ex
+            for (auto const &handle: i_handles)
+                SQLExec::indices->del(handle);
+        } catch (...) {}
+        throw;  // re-throw the original exception (which should give the client some clue as to why it did
     }
-
-    DbIndex& index = SQLExec::indices->get_index(table_name, index_name);
-    index.create();
-
-    
-    return new QueryResult("Created Index " + index_name);
+    return new QueryResult("created index " + index_name);
 }
 
 // DROP index or table based on statement specifics
