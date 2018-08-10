@@ -11,7 +11,7 @@ OBJS       = sql5300.o heap_storage.o ParseTreeToString.o SQLExec.o schema_table
 # Rule for linking to create the executable
 # Note that this is the default target since it is the first non-generic one in the Makefile: $ make
 sql5300: $(OBJS)
-	g++ -L$(LIB_DIR) -o $@ $(OBJS) -ldb_cxx -lsqlparser
+	g++ -L$(LIB_DIR) -o $@ $(OBJS) -ldb_cxx -lsqlparser -g
 
 # In addition to the general .cpp to .o rule below, we need to note any header dependencies here
 # idea here is that if any of the included header files changes, we have to recompile
@@ -31,11 +31,10 @@ heap_storage.o : $(HEAP_STORAGE_H)
 schema_tables.o : $(SCHEMA_TABLES_) ParseTreeToString.h
 sql5300.o : $(SQLEXEC_H) ParseTreeToString.h
 storage_engine.o : storage_engine.h
-EvalPlan.o : $(EVAL_PLAN_H)
 
 # General rule for compilation
 %.o: %.cpp
-	g++ -I$(INCLUDE_DIR) $(CCFLAGS) -o "$@" "$<"
+	g++ -I$(INCLUDE_DIR) $(CCFLAGS) -o "$@" "$<" -g
 
 # Rule for removing all non-source files (so they can get rebuilt from scratch)
 # Note that since it is not the first target, you have to invoke it explicitly: $ make clean
