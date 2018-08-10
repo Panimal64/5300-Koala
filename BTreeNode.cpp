@@ -345,7 +345,17 @@ BTreeLeaf::~BTreeLeaf() {
 
 // Find the handle for a given key
 Handle BTreeLeaf::find_eq(const KeyValue* key) const {
-    return this->key_map.at(*key);
+    //return this->key_map.at(*key);
+    Handle handle;
+    if (this->key_map.find(*key) != this->key_map.end()) {
+        handle = this->key_map.at(*key);
+        //   cout << "find a match in key_map" << endl;
+    }
+    else {
+      //  cout << "Do NOT find a match in key_map" << endl;
+    }
+
+    return handle;
 }
 
 // Save the key_map and next_leaf data in the correct order
@@ -402,12 +412,12 @@ Insertion BTreeLeaf::insert(const KeyValue* key, Handle handle) {
         delete dbt;
 
         // too big, so split
-
+        cout << "too big, so split" << endl;
         // create the sister and put her to the right
         BTreeLeaf *nleaf = new BTreeLeaf(this->file, 0, this->key_profile, true);
         nleaf->next_leaf = this->next_leaf;
         this->next_leaf = nleaf->id;
-
+        cout << "this->next_leaf = " << to_string(this->next_leaf) << endl;
         // move half of the entries to the sister
         auto key_list = this->key_map;       // make a copy of my key_map
         key_list[*key] = handle;             // add key/handle to it
