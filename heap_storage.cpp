@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <memory.h>
 #include "heap_storage.h"
+#include "btree.h"
 using namespace std;
 
 typedef uint16_t u16;
@@ -126,7 +127,7 @@ void SlottedPage::put_header(RecordID id, u16 size, u16 loc) {
 // Calculate if we have room to store a record with given size. The size should include the 4 bytes
 // for the header, too, if this is an add.
 bool SlottedPage::has_room(u16 size) const {
-	u16 available = this->end_free - (u16)(4*(this->num_records+1));
+	u16 available = this->end_free - (u16)(4*(this->num_records+2));
 	return size <= available;
 }
 
@@ -611,5 +612,8 @@ bool test_heap_storage() {
  
     table.drop();
 	delete handles;
-    return true;
+
+	bool result = test_btree();
+
+    return result;
 }
