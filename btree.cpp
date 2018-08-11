@@ -18,7 +18,7 @@ BTreeIndex::~BTreeIndex() {
 	// FIXME - free up stuff
 	delete(this->stat);
 	delete(this->root);
-	drop();
+    //	drop();
 }
 
 // Create the index.
@@ -203,17 +203,20 @@ bool test_btree() {
 	ValueDict test_row1, test_row2, test_row3, test_row4;
 	result = false;
 	test_row1["a"] = Value(12);
-	Handles* handles1 = index->lookup(&test_row1);
+    test_row1["b"] = Value(99);
+    Handles* handles1 = index->lookup(&test_row1);
 	if (handles1->empty()) {
 		result = false;
 	}
 	else {
 		for (auto const& handle : *handles1) {
 			ValueDict* result_row = testTable.project(handle);
-			if ((*result_row)["a"] == test_row1["a"]) {
+			if ((*result_row)["a"] == test_row1["a"] &&
+                (*result_row)["b"] == test_row1["b"]) {
 				result = true;
 				cout << "First test passes - Found!!!" << endl;
-				break;
+                delete result_row;
+                break;
 			}
 			delete result_row;
 		}
@@ -222,6 +225,7 @@ bool test_btree() {
 
 	result = false;
 	test_row2["a"] = Value(88);
+    test_row2["b"] = Value(101);
 	Handles* handles2 = index->lookup(&test_row2);
 	if (handles2->empty()) {
 		result = false;
@@ -229,10 +233,12 @@ bool test_btree() {
 	else {
 		for (auto const& handle : *handles2) {
 			ValueDict* result_row = testTable.project(handle);
-			if ((*result_row)["a"] == test_row2["a"]) {
+			if ((*result_row)["a"] == test_row2["a"] &&
+                (*result_row)["b"] == test_row2["b"]) {
 				result = true;
 				cout << "Second test passes - Found!!!" << endl;
-				break;
+                delete result_row;
+                break;
 			}
 			delete result_row;
 		}
@@ -249,8 +255,10 @@ bool test_btree() {
 	else {
 		for (auto const& handle : *handles3) {
 			ValueDict* result_row = testTable.project(handle);
-			if ((*result_row)["a"] == test_row3["a"]) {
-				result = false;
+			if ((*result_row)["a"] == test_row3["a"] &&
+                (*result_row)["b"] == test_row3["b"]) {
+              result = false;
+              delete result_row;
 				break;
 			}
 			delete result_row;
@@ -269,8 +277,10 @@ bool test_btree() {
 		else {
 			for (auto const& handle : *handles4) {
 				ValueDict* result_row = testTable.project(handle);
-				if ((*result_row)["a"] == test_row4["a"]) {
-					result = true;
+				if ((*result_row)["a"] == test_row4["a"]&&
+                    (*result_row)["b"] == test_row4["b"]) {
+                  result = true;
+                  delete result_row;
 					break;
 				}
 				delete result_row;
@@ -279,7 +289,10 @@ bool test_btree() {
 		delete handles4;
 	}
 	cout << "Fourth test passes - Found!!! (1000 rows)" << endl;
-	delete index;
+	index->drop();
+    delete index;
+    testTable.drop();
+    
 
 	return result;
 }

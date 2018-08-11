@@ -402,13 +402,19 @@ QueryResult *SQLExec::create_index(const CreateStatement *statement) {
         }
 
         DbIndex &index = SQLExec::indices->get_index(table_name, index_name);
-        index.create();
-
+        try{
+          index.create();
+        }
+        catch(...)
+          {
+            index.drop();
+            throw;
+          }
     } catch (...) {
         // attempt to remove from _indices
         try {  // if any exception happens in the reversal below, we still want to re-throw the original ex
             for (auto const &handle: i_handles)
-                SQLExec::indices->del(handle);
+              SQLExec::indices->del(handle);
         } catch (...) {}
         throw;  // re-throw the original exception (which should give the client some clue as to why it did
     }
