@@ -177,7 +177,7 @@ bool test_btree() {
 	ca.set_data_type(ColumnAttribute::INT);
 	column_attributes.push_back(ca);
 
-	HeapTable testTable("foo", column_names, column_attributes);
+	HeapTable testTable("testTable", column_names, column_attributes);
 	testTable.create();
 
 	ValueDict row1, row2;
@@ -197,7 +197,7 @@ bool test_btree() {
 		testTable.insert(&row);
 	}
 
-	DbIndex* index = new BTreeIndex(testTable, "fooindex", test_column_names, true);
+	DbIndex* index = new BTreeIndex(testTable, "testIndex", test_column_names, true);
 	index->create();
 
 	ValueDict test_row1, test_row2, test_row3, test_row4;
