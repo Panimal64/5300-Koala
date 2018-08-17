@@ -1,2 +1,2 @@
 # 5300-Koala
-Personal work - Mileston 3 and Mileston 4 tags
+Personal work - Milestone 3 and Milestone 4 tags
